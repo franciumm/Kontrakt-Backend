@@ -4,6 +4,26 @@ const MODELS = {
   GLM_MAIN: 'accounts/fireworks/models/glm-5p2',
 };
 
+const GIG_INTENT_SCHEMA = {
+  $defs: {
+    GigIntent: {
+      type: "object",
+      properties: {
+        gigType: {
+          type: "string",
+          enum: ["design", "software", "other"]
+        },
+        entities: {
+          type: "array",
+          items: { type: "string" }
+        }
+      },
+      required: ["gigType", "entities"]
+    }
+  },
+  $ref: "#/$defs/GigIntent"
+};
+
 /**
  * Flow 1: Parses the gig description to extract basic intent.
  */
@@ -11,7 +31,10 @@ export async function parseGigDescription(description) {
   const response = await client.chat.completions.create({
     model: MODELS.GLM_MAIN,
     messages: [
-      { role: "system", content: "Extract the gig type (e.g. software, design) and key entities from the user's input. Return as JSON." },
+      { 
+        role: "system", 
+        content: `Extract the gig type (e.g. software, design) and key entities from the user's input. Return as JSON matching this schema:\n${JSON.stringify(GIG_INTENT_SCHEMA, null, 2)}` 
+      },
       { role: "user", content: description }
     ],
     temperature: 0.1,
@@ -19,20 +42,7 @@ export async function parseGigDescription(description) {
       type: "json_schema",
       json_schema: {
         name: "GigIntent",
-        schema: {
-          type: "object",
-          properties: {
-            gigType: {
-              type: "string",
-              enum: ["design", "software", "other"]
-            },
-            entities: {
-              type: "array",
-              items: { type: "string" }
-            }
-          },
-          required: ["gigType", "entities"]
-        }
+        schema: GIG_INTENT_SCHEMA
       }
     },
     safe_tokenization: true,
