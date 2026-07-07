@@ -12,11 +12,47 @@ const MAX_CONTRACT_LENGTH = 12_000;
  * @type {Array<{ pattern: RegExp, label: string }>}
  */
 const INJECTION_PATTERNS = [
-  // Classic instruction override
+  // Classic instruction override (English)
   {
     pattern: /ignore (all )?(previous|prior|above) (instructions|prompts|rules)/gi,
     label: 'INSTRUCTION_OVERRIDE',
   },
+  // Multilingual instruction-override coverage (ticket SEC-101). The English
+  // regex above is the canonical pattern; these mirror it in the languages
+  // most likely to appear in contracts crossing locale boundaries.
+  // German
+  {
+    pattern: /ignoriere (alle )?(vorherigen|bisherigen|früheren)? ?(anweisungen|regeln|befehle)/i,
+    label: 'INSTRUCTION_OVERRIDE_DE',
+  },
+  { pattern: /vergiss (alle )?(vorherigen|bisherigen)? ?(anweisungen|regeln)/i, label: 'INSTRUCTION_OVERRIDE_DE' },
+  // French
+  {
+    pattern: /ignore (toutes? )?(les )?(instructions|consignes|règles|indications) (précédentes|antérieures|ci-dessus)/i,
+    label: 'INSTRUCTION_OVERRIDE_FR',
+  },
+  { pattern: /oublie (toutes? )?les (instructions|consignes|règles) (précédentes|antérieures)/i, label: 'INSTRUCTION_OVERRIDE_FR' },
+  // Spanish
+  {
+    pattern: /ignora (todas? )?las?(instrucciones|reglas|indicaciones) (anteriores|previas)/i,
+    label: 'INSTRUCTION_OVERRIDE_ES',
+  },
+  { pattern: /olvida (todas? )?las?(instrucciones|reglas) (anteriores|previas)/i, label: 'INSTRUCTION_OVERRIDE_ES' },
+  // Portuguese
+  {
+    pattern: /ignore (todas? )?as?(instruções|regras|indicações) (anteriores|prévias)/i,
+    label: 'INSTRUCTION_OVERRIDE_PT',
+  },
+  // Italian
+  {
+    pattern: /ignora (tutte )?le?(istruzioni|regole) (precedenti|sopra)/i,
+    label: 'INSTRUCTION_OVERRIDE_IT',
+  },
+  // Chinese (Simplified + Traditional) — "忽略之前的指令" / "忘記先前的指示"
+  { pattern: /忽略(所有|全部)?(之前|先前|前面|上述)的?(指令|指示|说明|规则|規則)/u, label: 'INSTRUCTION_OVERRIDE_ZH' },
+  { pattern: /忘記(所有|全部)?(之前|先前|前面)的?(指令|指示|说明)/u, label: 'INSTRUCTION_OVERRIDE_ZH' },
+  // Japanese — "前の指示を無視して"
+  { pattern: /(前|以前)の(指示|命令|ルール)を?(無視|忘れ)/u, label: 'INSTRUCTION_OVERRIDE_JA' },
   // Role-switch attempts
   {
     pattern: /you are now (a |an )?(helpful |developer |admin )?(assistant|ai|bot|agent)/gi,
@@ -66,7 +102,7 @@ const INJECTION_PATTERNS = [
  * @returns {{ sanitized: string, flaggedPatterns: string[], truncated: boolean }}
  */
 export function sanitizeContractText(raw) {
-  let text = raw;
+  let text = typeof raw === 'string' ? raw : '';
   const flaggedPatterns = [];
   let truncated = false;
 
@@ -76,8 +112,14 @@ export function sanitizeContractText(raw) {
     truncated = true;
   }
 
-  // 2. Strip zero-width characters
-  text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  // 2. Strip zero-width / invisible characters. Beyond the classic
+  // BOM/zero-width family, this also catches the soft hyphen, word joiner,
+  // mongolian vowel separator, and bidi overrides — all known
+  // indirect-injection vectors that defeat regex pattern matching.
+  text = text.replace(
+    /[\u200B-\u200D\uFEFF\u00AD\u2060\u180E\u202A-\u202E\u2066-\u2069]/g,
+    ''
+  );
 
   // 3. Apply each injection pattern
   for (const { pattern, label } of INJECTION_PATTERNS) {

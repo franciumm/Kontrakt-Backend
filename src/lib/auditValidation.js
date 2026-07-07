@@ -21,6 +21,8 @@ const LEAKAGE_PATTERNS = [
   /Clauseguard Audit/i,
   /OUTPUT SCHEMA/i,
   /You are Clauseguard/i,
+  /RED-FLAG TAXONOMY/i, // Added when taxonomy block was added to the system prompt.
+  /sandwich defense/i,
 ];
 
 /**

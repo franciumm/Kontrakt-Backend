@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema(
       enum: ['freelancer', 'admin'],
       default: 'freelancer',
     },
+    // SHA-256 hashes of issued refresh tokens (ticket SEC-108 / auth flow).
+    // We store hashes, never plaintext, so a DB read cannot leak live tokens.
+    refreshTokens: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

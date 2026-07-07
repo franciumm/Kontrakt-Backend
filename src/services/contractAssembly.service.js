@@ -11,7 +11,7 @@ const GIG_INTENT_SCHEMA = {
       properties: {
         gigType: {
           type: "string",
-          enum: ["design", "software", "other"]
+          enum: ["design", "software", "marketing", "other"]
         },
         entities: {
           type: "array",

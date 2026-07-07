@@ -7,7 +7,11 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "FIREWORKS_API_KEY=test-key NODE_ENV=test node --test \"tests/**/*.test.js\"",
+    "test:unit": "FIREWORKS_API_KEY=test-key NODE_ENV=test node --test \"tests/unit/**/*.test.js\"",
+    "test:functional": "FIREWORKS_API_KEY=test-key NODE_ENV=test node --test \"tests/functional/**/*.test.js\"",
+    "test:integration": "FIREWORKS_API_KEY=test-key NODE_ENV=test node --test \"tests/integration/**/*.test.js\"",
+    "test:security": "FIREWORKS_API_KEY=test-key NODE_ENV=test node --test \"tests/security/**/*.test.js\"",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
@@ -24,13 +28,21 @@
   },
   "homepage": "https://github.com/franciumm/Kontrakt-Backend#readme",
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "morgan": "^1.11.0",
+    "multer": "^2.2.0",
     "openai": "^4.104.0",
+    "pdf-lib": "^1.17.1",
+    "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "^6.1.200",
     "zod": "^3.23.8"
   },
   "devDependencies": {
