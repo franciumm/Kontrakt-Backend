@@ -26,7 +26,7 @@ Three layers of "whoa" stacked:
 ## Constraints
 
 - **48-hour hackathon** (team of 2). Real build budget after sleep/food/demo-prep: ~30 hours of focused work.
-- **Stack locked:** Next.js (App Router) + Vercel + Tailwind + Claude API (Anthropic SDK). One-command deploy to a real URL judges can poke.
+- **Stack locked:** Next.js (App Router) + Vercel + Tailwind + GLM-5.2 API (OpenAI SDK). One-command deploy to a real URL judges can poke.
 - **Solo-role separation needed:** with 2 people and zero margin, both must ship in parallel with sharp ownership boundaries. No collision on the same files.
 - **Demo conditions rule everything:** latency must stay under 2 seconds per round, no flaky LLM outputs under live conditions, every demo path must be reproducible.
 - **No legal credentials:** the team can't credibly claim "lawyer-drafted." Must lean on public-domain templates for clause credibility.
@@ -73,7 +73,7 @@ Two LLM calls per round — one ("interrogator") asks the next sharp question; a
 ## Open Questions
 
 1. **Jurisdiction scope.** Which jurisdictions do you support for the demo? US-only (single state, e.g., Delaware or California)? Or generic "common-law default"? Recommend: pick ONE state for the demo (e.g., Delaware for contract-law familiarity) and label clearly. Multi-jurisdiction is post-hackathon.
-2. **LLM model choice.** Claude Sonnet 4.x is the right default (speed + quality balance for live UX). Reserve Opus for offline clause-generation if needed.
+2. **LLM model choice.** GLM-5.2 is the right default (speed + quality balance for live UX). Reserve Opus for offline clause-generation if needed.
 3. **Demo data.** Will you use a scripted gig description (recommended for reproducibility) or live audience input? Recommend scripted with a backup typed input.
 
 ## Resolved Decisions (pre-committed)
@@ -99,7 +99,7 @@ These were open questions in the first draft. The adversarial spec review caught
    ```
    `getNextQuestions(answeredState, gigType)` walks the graph: returns the next 1–3 questions from clauses where `triggersWhen(state) === true` AND all `dependsOn` are satisfied AND the question's `field` is not yet in `answeredState`. **Questions are authored on-node** (deterministic, reproducible demo) — the LLM is only used for the final contract assembly, never for question generation.
 4. **Exposure weight scale: 0–10 integer per clause.** Coverage % = (sum of `exposureWeight` for clauses with all questions answered) / (sum of `exposureWeight` for all triggered clauses). The dial maps 0–100% to red→yellow→green. Person A assigns weights during clause authoring based on consequence severity (e.g., 'payment-terms' = 10, 'jurisdiction' = 7, 'dispute-resolution' = 5).
-5. **Demo contingency: cached/frozen output for the primary demo path.** The scripted gig (logo design) has a pre-generated contract + exposure report cached locally. If the live Claude API call times out or returns garbage during the demo, fall back to cached output seamlessly. The live LLM stream is the *preferred* path; the cache is the *demo-safe* path. Build the fallback switch at hour 16 alongside the LLM integration.
+5. **Demo contingency:** We rely on fast, reliable endpoints (`gemma-4-26b-a4b-it` and `glm-5p2`) and robust error handling rather than cache fallbacks. Cache fallbacks have been rejected to ensure realistic demo output.
 
 ## Success Criteria
 
@@ -135,14 +135,14 @@ Concrete build order for the 48-hour window. Both teammates ship in parallel wit
 - **Person B:** Build the wizard UI. One question per screen, exposure dial component (animated SVG circle, red→green based on `coverage %` from the weight math in Resolved Decisions #4), live contract preview that updates as answers stream in.
 
 ### Hour 8–16: Intelligence layer (parallel)
-- **Person A:** Write the LLM prompt for contract assembly. Input: gig description + answered state + selected clause nodes. Output: a contract document that flows (transitions between clauses, not just concatenation). Stream tokens via Vercel AI SDK. **Build the demo-cache fallback switch alongside** (Resolved Decisions #5): pre-generate the scripted-gig output and cache locally; flip to cache if the live stream returns garbage or times out.
+- **Person A:** Write the LLM prompt for contract assembly. Input: gig description + answered state + selected clause nodes. Output: a contract document that flows (transitions between clauses, not just concatenation). Stream tokens via Vercel AI SDK.
 - **Person B:** Build the graph visualization. React Flow or custom SVG. Nodes appear / highlight as they become relevant. This is the bonus "whoa."
 
 ### Hour 16–24: Exposure report + integration
 - Both: integrate the contract output with the exposure report (one-pager: covered clauses, gap clauses, plain-English explanations). For "download": rely on browser native print-to-PDF (Cmd+P → Save as PDF) — no PDF library, no scope creep. Style the report view so it prints cleanly.
 
 ### Hour 24–36: Demo polish
-- Scripted demo path. 2 gig types tested (logo/design + software). Exposure dial animation tuned. Graph visualization polished. Deploy re-verified. Demo-cache fallback tested — confirm seamless switch on API failure.
+- Scripted demo path. 2 gig types tested (logo/design + software). Exposure dial animation tuned. Graph visualization polished. Deploy re-verified.
 - **Practice the pitch.** Out loud. At least 5 times. Know the 60-second flow cold.
 
 ### Hour 36–48: Buffer + contingency
@@ -155,7 +155,7 @@ Concrete build order for the 48-hour window. Both teammates ship in parallel wit
 ## Dependencies
 
 - Vercel account (free tier is fine)
-- Anthropic API key (Claude Sonnet 4.x)
+- Fireworks API (OpenAI compatible) key (GLM-5.2)
 - GitHub repo (for source control + Vercel deploy trigger)
 - Creative Commons / public-domain legal template source (Stanford CodeX, Common Form, or state bar associations)
 - React Flow (for the graph visualization) — open source, MIT

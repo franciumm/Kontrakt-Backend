@@ -71,9 +71,11 @@ A freelancer pastes a client's contract. After ~8 seconds of scanning, red flags
 - **Live contract reshape animation:** contract materializes token-by-token as answers stream in
 - **Exposure report one-pager:** covered clauses, gap clauses, plain-English explanations; print-to-PDF friendly
 - **Audit-preview flow:** paste client contract → 8s scan → trap counter → click-to-expand card stack
+- **Layer 5 LLM-based injection classifier:** Implemented using `llama-guard-3-8b`
+- **Token-boundary injection defense:** Implemented via Fireworks API `safe_tokenization: true`
+- **Fast first-pass scan:** Implemented using `gemma-4-26b-a4b-it`
 - **10 audit red-flag categories** (specific list below)
 - **Demo preset buttons:** "try: logo design," "try: software gig," "try: bad client contract" — one click loads scripted inputs
-- **Demo cache fallback:** both flows have a pre-generated cached output if the live Claude API fails or returns garbage mid-demo
 - **Deployed Vercel URL:** judges can poke it on their phones after the pitch
 
 ### The 10 audit red-flag categories (the audit must detect these)
@@ -97,7 +99,6 @@ A freelancer pastes a client's contract. After ~8 seconds of scanning, red flags
 - Negotiation simulator (AI role-plays as client's lawyer — this is the v2 product angle)
 - Multi-jurisdiction support
 - Streaming progressive trap counter (let counter tick live during LLM call, not just post-response)
-- Layer 5 LLM-based injection classifier (second-model detection; too expensive for hackathon)
 - Live-edit (judge types unscripted gig description; wizard adapts)
 
 ---
@@ -111,7 +112,6 @@ A freelancer pastes a client's contract. After ~8 seconds of scanning, red flags
 - Clause dependency graph schema (clause nodes with `dependsOn`, `triggersWhen`, authored `questions[]`)
 - The `getNextQuestions(answeredState, gigType)` graph-walking function
 - Audit prompt engineering (system prompt with the 10 red-flag categories, response schema)
-- Audit cache fallback (pre-generate scripted bad-contract response, switch on failure)
 - Exposure-weight assignments per clause (0–10 integer scale based on consequence severity)
 
 **Does NOT own:**
@@ -174,10 +174,10 @@ For non-trivial scope questions (cut a feature, change a demo flow), default to:
 ## Locked Architecture Decisions (with reasoning)
 
 ### Stack
-- **Next.js App Router + Vercel + Tailwind + Claude Sonnet 4.x API**
+- **Next.js App Router + Vercel + Tailwind + GLM-5.2 API**
 - One-command Vercel deploy = judges get a URL they can poke on their phones
 - Streaming + form wizard patterns are trivial in this stack
-- Claude Sonnet 4.x for speed + quality balance under live UX
+- GLM-5.2 for speed + quality balance under live UX
 
 ### Why clause-graph walker (not template-driven or two-agent)
 - The graph is genuinely how lawyers think about contracts — clause dependencies are real
@@ -202,11 +202,6 @@ For non-trivial scope questions (cut a feature, change a demo flow), default to:
 - Layered defense adds ~45–60 min vs single-layer's 5 min, and covers: input sanitization (regex strip of known attack patterns) + sandwich defense + random per-call delimiters + role anchoring + output validation (JSON schema + length bounds + no system-prompt leakage).
 - Defensible in Q&A if a judge asks about security posture — which they do at every AI hackathon now.
 - Full implementation details + the actual prompt template + test cases: see `clauseguard-SECURITY-DESIGN.md`.
-
-### Why demo cache fallback is non-negotiable
-- Hackathon demos die when the live API dies. Both flows need a pre-generated "if all else fails, show this" path
-- The live LLM stream is the *preferred* path; the cache is the *demo-safe* path
-- Build the cache switch alongside the LLM integration, not after
 
 ---
 

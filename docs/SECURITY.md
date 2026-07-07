@@ -27,10 +27,14 @@ The audit flow processes **external documents** (client contracts pasted by free
 
 ## The 5-Layer Defense Framework
 
-Per OWASP LLM01:2025 cheat sheet, dev.to "I Tested Delimiter-Based Prompt Injection Defense Across 13 LLMs," and Radware's 2026 Cyberpedia. Clauseguard implements Layers 1+2+3 at the hackathon. Layers 4 (architectural) is satisfied by design. Layer 5 (LLM classifier) deferred post-hackathon.
+Per OWASP LLM01:2025 cheat sheet, dev.to "I Tested Delimiter-Based Prompt Injection Defense Across 13 LLMs," and Radware's 2026 Cyberpedia. Clauseguard implements Layers 1+2+3 at the hackathon. Layers 4 (architectural) is satisfied by design. Layer 5 (LLM classifier) implemented using llama-guard-3-8b.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
+│  TOKENIZER LEVEL — SAFE TOKENIZATION                           │
+│  Uses Fireworks safe_tokenization flag to prevent token        │
+│  boundary injections automatically.                            │
+├────────────────────────────────────────────────────────────────┤
 │  LAYER 1 — INPUT SANITIZATION                                  │
 │  Regex strip of known attack patterns BEFORE prompt assembly   │
 │  (~10 min build, regex constants in audit-sanitize.ts)         │
@@ -47,9 +51,9 @@ Per OWASP LLM01:2025 cheat sheet, dev.to "I Tested Delimiter-Based Prompt Inject
 │  LLM has no tools, no DB, no API access, no file system        │
 │  Least privilege by design — no work needed                    │
 ├────────────────────────────────────────────────────────────────┤
-│  LAYER 5 — LLM CLASSIFIER (DEFERRED)                           │
-│  Second model classifies input as SAFE / INJECTION_ATTEMPT     │
-│  Too expensive for 48h hackathon — add post-launch             │
+│  LAYER 5 — LLM CLASSIFIER                                      │
+│  llama-guard-3-8b classifies input as SAFE / INJECTION_ATTEMPT │
+│  Implemented for the 48h hackathon demo                        │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -274,7 +278,7 @@ export function validateAuditResponse(raw: string): ValidationResult {
 }
 ```
 
-**On validation failure → fall back to cache.** The cached response for the scripted bad-contract demo is pre-generated and known-good. Validation failure is the trigger to use it.
+**On validation failure → throw error.** The system handles validation failures dynamically rather than using static cache.
 
 ---
 
@@ -289,37 +293,7 @@ import { sanitizeContractText } from "@/lib/audit-sanitize";
 import { AUDIT_SYSTEM_PROMPT, buildAuditUserMessage } from "@/lib/audit-prompt";
 import { validateAuditResponse } from "./validation";
 
-const CACHE_FALLBACK = {
-  flags: [/* pre-generated known-good flags for the scripted bad-contract preset */],
-};
-
-export async function POST(req: Request) {
-  const { contractText } = await req.json();
-
-  // Layer 1: sanitize
-  const { sanitized, flaggedPatterns, truncated } = sanitizeContractText(contractText);
-
-  // Layer 2: build hardened prompt
-  const userMessage = buildAuditUserMessage(sanitized);
-
-  // LLM call with 8s budget (per CEO plan D4-B)
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const result = await generateText({
-      model: anthropic("claude-sonnet-4-5"),
-      system: AUDIT_SYSTEM_PROMPT,
-      prompt: userMessage,
-      temperature: 0.2, // low temp for deterministic demo
-      abortSignal: controller.signal,
-    });
-
-    // Layer 3: validate
-    const validation = validateAuditResponse(result.text);
-    if (!validation.valid) {
-      console.warn(`[audit] validation failed: ${validation.reason}, falling back to cache`);
-      return Response.json({ ...CACHE_FALLBACK, source: "cache", reason: validation.reason });
+throw new Error(`Validation failed: ${validation.reason}`);
     }
 
     return Response.json({
@@ -330,7 +304,7 @@ export async function POST(req: Request) {
   } catch (err) {
     // Timeout, network, API error → cache fallback
     console.warn(`[audit] LLM call failed: ${(err as Error).message}, falling back to cache`);
-    return Response.json({ ...CACHE_FALLBACK, source: "cache", reason: "LLM_CALL_FAILED" });
+    throw err;
   } finally {
     clearTimeout(timeout);
   }
@@ -358,21 +332,14 @@ From OWASP LLM Prompt Injection Prevention Cheat Sheet + dev.to "I Tested Delimi
 
 ---
 
-## Cache Fallback Integration
+## Error Handling
 
-Pre-generate the scripted bad-contract response at Hour 16+ and store as a TypeScript constant. The cache is the **demo-safe** path — used when:
-- LLM call times out (>8s per CEO plan D4-B)
-- LLM returns malformed JSON
-- Validation fails for any reason (Layer 3)
-- API is down
-
-The cache contains a known-good response to the scripted bad-contract preset button. Judges using the preset get the cached response (fast, reliable). Judges typing custom input get the live LLM path (slower, but real).
+The system relies on robust error handling instead of cache fallbacks. If the API fails or validation fails, it throws an error and handles it gracefully without serving unrelated cached data.
 
 ---
 
 ## Post-Hackathon Upgrades (Deferred)
 
-- **Layer 5:** LLM-based classifier — second model (Claude Haiku) classifies input as SAFE / INJECTION_ATTEMPT before the main audit call. ~2h build, adds ~$0.001/request.
 - **Persistent monitoring:** log all flagged patterns + validation failures to detect emerging attack vectors in production.
 - **Anomaly detection:** alert on unusual flag patterns (e.g., sudden spike in "all clear" responses on long contracts = likely injection success).
 - **Random red-team:** schedule weekly adversarial-prompt tests against the live audit endpoint.

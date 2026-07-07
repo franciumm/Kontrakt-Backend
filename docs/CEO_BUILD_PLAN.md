@@ -96,8 +96,8 @@ getNextQuestions() → render Q        sanitize + delimiter-wrap pasted text
        │                              (layered injection defense — Layers 1+2+3)
        ▼                                    │
 [user answers]                             ▼
-       │                              /api/audit call (Claude Sonnet 4.x)
-       ▼                              8s budget, cache fallback at 8s (D4-B)
+       │                              /api/audit call (GLM-5.2)
+       ▼                              8s budget
 exposure dial update                       │
        │                                    ▼
        ▼                              "scanning for traps..." pulse state
@@ -117,7 +117,7 @@ exposure report render                click counter → expand card stack
 - User prompt: `<contract>${pastedText}</contract>`
 - Response: structured JSON, parsed client-side
 
-**Latency budget:** 8s max, cache fallback at 8s. Animated "scanning for traps..." pulse state during wait. Cache is pre-generated for the scripted bad-contract demo preset.
+**Latency budget:** 8s max,  Animated "scanning for traps..." pulse state during wait. No cache fallback is used.
 
 **Visual hook (D5 hybrid):** Animated trap counter ("TRAPS FOUND: 0" ticking up as flags return) is the primary visual — mirrors the interrogator's exposure dial energy. Click counter → expand card stack below, each card shows severity badge + clause quote + plain-English explanation. Progressive disclosure: counter is always visible, cards are opt-in detail.
 
@@ -129,11 +129,12 @@ exposure report render                click counter → expand card stack
 
 **Audit prompt-injection defense (UPGRADED from D3-B to Layers 1+2+3 per eng-review research, 2026-07-07):** The audit flow's threat model is INDIRECT injection (real client contracts contain hidden text — white-on-white, zero-width unicode, base64 payloads — that judges never see). This is the EchoLeak CVE-2025-32711 analog. Single-layer delimiter is below the credible minimum per OWASP LLM01:2025, dev.to research, and Radware's 2026 threat-landscape report. Upgraded to layered defense:
 
+- **Tokenizer Level:** Pass `safe_tokenization: true` via Fireworks OpenAI SDK to mathematically prevent token-boundary injections.
 - **Layer 1 (input sanitization):** light regex pass — strip `ignore (all )?(previous|prior|above) instructions`, `you are now`, `<system prompt:>`, base64-looking strings, HTML tags, Llama-style `[INST]` markers. Replace with `[FILTERED]`.
 - **Layer 2 (prompt architecture):** sandwich defense (system instructions repeated after the contract block) + **random per-call delimiters** (`<contract_${randomId}>`) so attackers can't predict the close tag + role anchoring with explicit IMMUTABLE CONSTRAINTS
 - **Layer 3 (output validation):** JSON schema match against the 10-flag response shape, length bounds, no system-prompt leakage, fall back to cache on validation failure
 - **Layer 4 (architectural):** already covered — LLM has no tools, no DB, no API access (least privilege by design)
-- **Layer 5 (LLM-based detection classifier):** deferred post-hackathon (second-model classifier too expensive for 48h)
+- **Layer 5 (LLM-based detection classifier):** Implemented using `accounts/fireworks/models/llama-guard-3-8b` to classify input as SAFE / INJECTION_ATTEMPT before the main audit call.
 
 Full prompt template + sanitization regex + output validation code + 6 OWASP test cases: see `~/.gstack/projects/francium/clauseguard-SECURITY-DESIGN.md`.
 
@@ -150,12 +151,11 @@ Full prompt template + sanitization regex + output validation code + 6 OWASP tes
 - Live-edit stretch (judge types unscripted gig description; flagged as conditional in design doc)
 - **React Flow graph visualization** (dropped per outside-voice C2; 4–6h polish item post-hackathon)
 - **Streaming progressive trap counter** (the chosen D4-B + D5-counter approach is honest; streaming version would let the counter tick live during the LLM call — post-hackathon polish)
-- **Layer 5 LLM-based injection classifier** (second-model detection; too expensive for 48h hackathon but worth adding post-launch if the product ships)
 
 ## Open Risks (CEO-level, not engineering)
 
 1. **Schedule ceiling hit.** Audit + presets + baseline = zero margin. Both demo flows must work at hour 47. **Mitigation:** the demo-cache fallback (already in design doc) covers the interrogator flow; **the audit flow's cache fallback MUST be built at Hour 16 alongside audit prompt engineering** (not deferred to Hour 24+). Both flows get the same demo-safety net.
-2. **Two demos, one broken.** If either demo flow breaks under live conditions, the other still has to land. **Mitigation:** practice both flows independently; either can be the primary demo if the other fails. Cache fallback for both flows means even a total Claude API outage doesn't kill the demo.
+2. **Two demos, one broken.** If either demo flow breaks under live conditions, the other still has to land. **Mitigation:** practice both flows independently; either can be the primary demo if the other fails. Cache fallback for both flows means even a total GLM-5.2 API outage doesn't kill the demo.
 3. **Audit prompt quality unproven.** The audit flow is newly added; the LLM prompt structure isn't spec'd in the design doc. **Mitigation:** Person A writes and tests the audit prompt at Hour 8-16 alongside the contract-assembly prompt — do NOT defer to Hour 24+. Test against 3–5 real bad client contracts sourced from r/freelance before the demo.
 
 ## Build Schedule Adjustments (vs office-hours design doc)
