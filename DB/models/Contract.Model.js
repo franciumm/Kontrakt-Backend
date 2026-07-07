@@ -14,7 +14,7 @@ const contractSchema = new mongoose.Schema(
     },
     gigType: {
       type: String,
-      enum: ['software', 'design'],
+      enum: ['software', 'design', 'marketing', 'other'],
       required: true,
     },
     answeredState: {
