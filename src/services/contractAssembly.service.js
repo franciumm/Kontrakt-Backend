@@ -15,7 +15,26 @@ export async function parseGigDescription(description) {
       { role: "user", content: description }
     ],
     temperature: 0.1,
-    response_format: { type: "json_object" },
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "GigIntent",
+        schema: {
+          type: "object",
+          properties: {
+            gigType: {
+              type: "string",
+              enum: ["design", "software", "other"]
+            },
+            entities: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          required: ["gigType", "entities"]
+        }
+      }
+    },
     safe_tokenization: true,
   });
 

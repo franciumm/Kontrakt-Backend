@@ -80,12 +80,25 @@ export async function fastFirstPassScan(sanitizedContractText) {
   const stream = await client.chat.completions.create({
     model: MODELS.GEMMA_FAST,
     messages: [
-      { role: "system", content: "You are a fast legal contract analyzer. Count the number of likely legal traps or red flags for a freelancer. Output a single integer." },
+      { role: "system", content: "You are a fast legal contract analyzer. Count the number of likely legal traps or red flags for a freelancer. Output as JSON matching the schema." },
       { role: "user", content: sanitizedContractText }
     ],
     temperature: 0.1,
-    max_tokens: 10,
+    max_tokens: 15,
     stream: true,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "FastScan",
+        schema: {
+          type: "object",
+          properties: {
+            trapCount: { type: "integer" }
+          },
+          required: ["trapCount"]
+        }
+      }
+    },
     safe_tokenization: true,
   });
   return stream;
@@ -113,7 +126,45 @@ export async function deepAuditContract(contractText) {
         { role: "user", content: userMessage }
       ],
       temperature: 0.2,
-      response_format: { type: "json_object" }, // GLM may use json_object or json_schema if supported
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "AuditResponse",
+          schema: {
+            type: "object",
+            properties: {
+              flags: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    category: {
+                      type: "string",
+                      enum: [
+                        "work-for-hire-trap", "unlimited-revisions", "missing-kill-fee",
+                        "vague-scope", "ip-transfer-timing", "asymmetric-indemnification",
+                        "no-late-payment-penalty", "overbroad-nda", "auto-renewal", "jurisdiction-mismatch"
+                      ]
+                    },
+                    severity: {
+                      type: "string",
+                      enum: ["red", "yellow", "green"]
+                    },
+                    clause_quote: {
+                      type: "string"
+                    },
+                    plain_english: {
+                      type: "string"
+                    }
+                  },
+                  required: ["category", "severity", "clause_quote", "plain_english"]
+                }
+              }
+            },
+            required: ["flags"]
+          }
+        }
+      },
       safe_tokenization: true,
     }, { signal: controller.signal });
 
