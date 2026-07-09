@@ -31,7 +31,7 @@ try {
 
 // Hard caps — the audit flow only needs the first chunk of a contract.
 export const MAX_PAGES = 10;
-const DPI = 200; // 200 DPI is sufficient for OCR/Vision without ballooning payload size.
+const DPI = 120; // Lower DPI to prevent OOM on 256MB Fly instances
 // Defensive cap on the total base64 payload we hand to the Vision model —
 // protects against pathological PDFs (mostly-image, high-entropy pages).
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MB of base64 across all pages combined.
@@ -148,6 +148,7 @@ export async function convertPdfToImages(pdfBuffer) {
         throw e;
       }
       images.push(base64);
+      page.cleanup(); // Free memory associated with the page
     }
 
     // Release pdfjs's document hold (closes the worker for this doc).
