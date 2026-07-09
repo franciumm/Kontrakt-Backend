@@ -43,7 +43,7 @@ export function attachWebSocketServer(httpServer) {
   wss.on('connection', (ws, req) => {
     // Parse cookies from the handshake request to support HttpOnly auth.
     const cookies = req.headers.cookie || '';
-    const tokenMatch = cookies.match(/(?:(?:^|.*;\s*)accessToken\s*\=\s*([^;]*).*$)|^.*$/);
+    const tokenMatch = cookies.match(/(?:(?:^|.*;\s*)Kontrakt_access_token\s*\=\s*([^;]*).*$)|^.*$/);
     const cookieToken = tokenMatch ? tokenMatch[1] : null;
 
     if (cookieToken) {

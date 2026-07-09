@@ -19,14 +19,14 @@ function getCookieOptions() {
 
 function setCookies(res, accessToken, refreshToken) {
   const common = getCookieOptions();
-  res.cookie('accessToken', accessToken, { ...common, maxAge: ACCESS_COOKIE_MS });
-  res.cookie('refreshToken', refreshToken, { ...common, maxAge: REFRESH_COOKIE_MS });
+  res.cookie('Kontrakt_access_token', accessToken, { ...common, maxAge: ACCESS_COOKIE_MS });
+  res.cookie('Kontrakt_refresh_token', refreshToken, { ...common, maxAge: REFRESH_COOKIE_MS });
 }
 
 function clearCookies(res) {
   const common = getCookieOptions();
-  res.clearCookie('accessToken', common);
-  res.clearCookie('refreshToken', common);
+  res.clearCookie('Kontrakt_access_token', common);
+  res.clearCookie('Kontrakt_refresh_token', common);
 }
 
 export const register = asyncHandler(async (req, res) => {
@@ -44,14 +44,14 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const refresh = asyncHandler(async (req, res) => {
-  const incoming = req.cookies?.refreshToken;
+  const incoming = req.cookies?.Kontrakt_refresh_token;
   const { accessToken, refreshToken } = await authService.refreshSession(incoming);
   setCookies(res, accessToken, refreshToken);
   return res.status(200).json({ success: true, data: null });
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  const incoming = req.cookies?.refreshToken;
+  const incoming = req.cookies?.Kontrakt_refresh_token;
   if (req.user?._id && incoming) {
     await authService.logout(req.user._id, incoming);
   }
