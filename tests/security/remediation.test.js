@@ -18,7 +18,7 @@ test('T2-mitigated — Layer 5 timeout suppresses flags (fail-closed)', async ()
   // (possibly-coerced) flags; Layer 5 hits its 1.5s budget and times out.
   // Old behavior: flags returned as trustworthy. New behavior: flags suppressed.
   const mock = mockCreate((params) => {
-    if (params.model.includes('llama-guard')) {
+    if (params.messages[0].content.includes('UNTRUSTED')) {
       // Llama Guard timed out — simulate by throwing AbortError on the
       // classifier path. classifyInjectionAttempt maps this to {timedOut:true}.
       throw abortError();
@@ -191,7 +191,7 @@ test('T5-mitigated — .env.example uses a placeholder, no real key committed', 
   const env = await fs.readFile(new URL('../../.env.example', import.meta.url), 'utf8');
   const line = env.split('\n').find((l) => l.startsWith('FIREWORKS_API_KEY='));
   assert.ok(line, 'FIREWORKS_API_KEY line present');
-  assert.match(line, /FIREWORKS_API_KEY=fw_PLACEHOLDER_REPLACE_ME/, 'must be a placeholder');
+  assert.match(line, /FIREWORKS_API_KEY=fw_REPLACE_ME/, 'must be a placeholder');
   assert.equal(line.includes('fw_8uwp'), false, 'the previously-committed real key must be gone');
 });
 
@@ -252,7 +252,7 @@ test('T17-mitigated — cache fallback fires for the bad-client preset on timeou
   const { deepAuditContract } = await import('../../src/services/audit.service.js');
   const { mockCreate, chatResponse, abortError } = await import('../helpers/fireworks-mock.js');
   const mock = mockCreate((params) => {
-    if (params.model.includes('llama-guard')) return chatResponse('SAFE');
+    if (params.messages[0].content.includes('UNTRUSTED')) return chatResponse('SAFE');
     throw abortError(); // deep call times out
   });
   try {

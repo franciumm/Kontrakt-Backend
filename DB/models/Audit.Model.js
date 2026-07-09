@@ -41,4 +41,6 @@ const auditSchema = new mongoose.Schema(
   }
 );
 
+auditSchema.index({ userId: 1, createdAt: -1 });
+
 export const Audit = mongoose.model('Audit', auditSchema);

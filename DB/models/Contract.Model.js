@@ -12,6 +12,10 @@ const contractSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    gigDescription: {
+      type: String,
+      required: true,
+    },
     gigType: {
       type: String,
       enum: ['software', 'design', 'marketing', 'other'],
@@ -28,6 +32,14 @@ const contractSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    generatedText: {
+      type: String,
+      default: '',
+    },
+    exposureReport: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
       enum: ['draft', 'finalized'],
@@ -38,5 +50,7 @@ const contractSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+contractSchema.index({ userId: 1, createdAt: -1 });
 
 export const Contract = mongoose.model('Contract', contractSchema);
