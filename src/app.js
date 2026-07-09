@@ -10,12 +10,10 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { rateLimit } from './middleware/rateLimiter.js';
 import { config } from './config/index.js';
 
-function corsOptions() {
-  return {
-    origin: true,
-    credentials: true,
-  };
-}
+const corsOptions = {
+  origin: true,
+  credentials: true,
+};
 
 export function createApp() {
   const app = express();
@@ -25,8 +23,8 @@ export function createApp() {
   }
 
   app.disable('x-powered-by');
-  app.use(helmet());
-  app.use(cors(corsOptions()));
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+  app.use(cors(corsOptions));
   app.use(express.json({ limit: '256kb' }));
   app.use(cookieParser());
 
