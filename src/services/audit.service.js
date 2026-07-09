@@ -6,8 +6,8 @@ import { AUDIT_SYSTEM_PROMPT, buildAuditUserMessage } from '../lib/auditPrompt.j
 import { AUDIT_CACHE_RESPONSE } from '../data/cache/audit.cache.js';
 
 const MODELS = {
-  INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-  GEMMA_FAST: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
+  INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
+  FAST_SCAN: process.env.FAST_SCAN_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
   GLM_DEEP: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
 };
 
@@ -154,8 +154,8 @@ export async function fastFirstPassScan(contractText, opts = {}) {
   if (onStatus) onStatus('scanning');
   const { sanitized } = sanitizeContractText(contractText);
 
-  const stream = await client.chat.completions.create({
-    model: MODELS.GEMMA_FAST,
+  const stream = await classifier.chat.completions.create({
+    model: MODELS.FAST_SCAN,
     messages: [
       {
         role: 'system',
@@ -167,10 +167,8 @@ export async function fastFirstPassScan(contractText, opts = {}) {
     max_tokens: 50,
     stream: true,
     response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'FastScan', schema: FAST_SCAN_SCHEMA },
+      type: 'json_object',
     },
-    safe_tokenization: true,
   });
   return stream;
 }

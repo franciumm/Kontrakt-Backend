@@ -1,11 +1,9 @@
-import client from '../providers/fireworks.provider.js';
+import amdVisionClient from '../providers/amd.provider.js';
 
-// Vision OCR now runs on the Fireworks Gemma 4 31B IT deployment (qi296nit),
-// which supports multimodal (vision) inputs. Previously this pointed at the
-// self-hosted AMD vLLM endpoint (LLaVA-Phi-3-Mini). The AMD provider now
-// only serves the injection classifier (Layer 5) at port 8001.
+// Vision OCR runs on the AMD cloud endpoint (port 8000).
+// Ensure AMD_BASE_URL is set in your .env / Fly secrets.
 const MODELS = {
-  VISION: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
+  VISION: process.env.VISION_MODEL || 'llava-phi-3-mini-int4.gguf',
 };
 
 const SYSTEM_PROMPT = `You are Kontrakt-OCR, a precise document transcription engine for legal contracts.
@@ -60,15 +58,14 @@ export async function transcribeImages(base64Images) {
   });
 
   const callOnce = async () => {
-    const response = await client.chat.completions.create({
+    const response = await amdVisionClient.chat.completions.create({
       model: MODELS.VISION,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: contentArray },
       ],
-      temperature: 0, // Deterministic transcription
-      max_tokens: 8000, // Plenty for a 10-page contract; we detect truncation if exceeded.
-      safe_tokenization: true,
+      temperature: 0,
+      max_tokens: 8000,
     });
 
     const choice = response.choices?.[0];
