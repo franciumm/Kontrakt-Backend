@@ -31,7 +31,7 @@ try {
 
 // Hard caps — the audit flow only needs the first chunk of a contract.
 export const MAX_PAGES = 10;
-const DPI = 120; // Lower DPI to prevent OOM on 256MB Fly instances
+const DPI = 72; // Absolute lowest DPI to guarantee we never OOM on 256MB Fly instances
 // Defensive cap on the total base64 payload we hand to the Vision model —
 // protects against pathological PDFs (mostly-image, high-entropy pages).
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MB of base64 across all pages combined.
@@ -115,14 +115,23 @@ export async function convertPdfToImages(pdfBuffer) {
     const images = [];
     let totalBytes = 0;
     const scale = DPI / 72; // 72 = PDF default DPI (points per inch).
+    let canvas = null;
+    let ctx = null;
 
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({ scale });
       const width = Math.max(1, Math.floor(viewport.width));
       const height = Math.max(1, Math.floor(viewport.height));
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext('2d');
+      
+      if (!canvas) {
+        canvas = createCanvas(width, height);
+        ctx = canvas.getContext('2d');
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+        // Setting width/height automatically clears the canvas and reallocates native memory
+      }
 
       // PDF page backgrounds are transparent by default; fill white so the
       // resulting JPEG matches what a human sees on paper / in a viewer.
