@@ -1,7 +1,7 @@
-import client from '../providers/fireworks.provider.js';
+import { classifier } from '../providers/amd.provider.js';
 
 const MODELS = {
-  GLM_MAIN: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
+  GLM_MAIN: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
 };
 
 const GIG_INTENT_SCHEMA = {
@@ -23,7 +23,7 @@ const GIG_INTENT_SCHEMA = {
  * Flow 1: Parses the gig description to extract basic intent.
  */
 export async function parseGigDescription(description) {
-  const response = await client.chat.completions.create({
+  const response = await classifier.chat.completions.create({
     model: MODELS.GLM_MAIN,
     messages: [
       { 
@@ -34,13 +34,8 @@ export async function parseGigDescription(description) {
     ],
     temperature: 0.1,
     response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "GigIntent",
-        schema: GIG_INTENT_SCHEMA
-      }
-    },
-    safe_tokenization: true,
+      type: "json_object"
+    }
   });
 
   return JSON.parse(response.choices[0].message.content);
@@ -71,7 +66,7 @@ Mandatory Clauses:
 ${clauseContext}
   `.trim();
 
-  const stream = await client.chat.completions.create({
+  const stream = await classifier.chat.completions.create({
     model: MODELS.GLM_MAIN,
     messages: [
       { role: "system", content: systemPrompt },
@@ -79,7 +74,6 @@ ${clauseContext}
     ],
     temperature: 0.3,
     stream: true,
-    safe_tokenization: true,
   });
 
   return stream;
@@ -97,14 +91,13 @@ export async function generateExposureReport(clauseNodes, gapClauses) {
     `- MISSING: ${node.title} (Risk: ${node.plainEnglish})`
   ).join('\n');
 
-  const response = await client.chat.completions.create({
+  const response = await classifier.chat.completions.create({
     model: MODELS.GLM_MAIN,
     messages: [
       { role: "system", content: "You are an expert contract auditor. Summarize the covered and missing clauses in a concise, plain-English report for a freelancer." },
       { role: "user", content: `Covered:\n${coverageContext}\n\nGaps:\n${gapContext}` }
     ],
     temperature: 0.2,
-    safe_tokenization: true,
   });
 
   return response.choices[0].message.content;

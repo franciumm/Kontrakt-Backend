@@ -1,4 +1,3 @@
-import client from '../providers/fireworks.provider.js';
 import { classifier } from '../providers/amd.provider.js';
 import { sanitizeContractText } from '../lib/auditSanitize.js';
 import { validateAuditResponse } from '../lib/auditValidation.js';
@@ -8,7 +7,7 @@ import { AUDIT_CACHE_RESPONSE } from '../data/cache/audit.cache.js';
 const MODELS = {
   INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
   FAST_SCAN: process.env.FAST_SCAN_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
-  GLM_DEEP: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
+  GLM_DEEP: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
 };
 
 const FAST_SCAN_SCHEMA = {
@@ -220,19 +219,17 @@ export async function deepAuditContract(contractText, opts = {}) {
 
   try {
     if (onStatus) onStatus('deep-audit');
-    const response = await client.chat.completions.create(
+    const response = await classifier.chat.completions.create(
       {
         model: MODELS.GLM_DEEP,
         messages: [
-          { role: 'system', content: AUDIT_SYSTEM_PROMPT },
+          { role: 'system', content: `${AUDIT_SYSTEM_PROMPT}\nEnsure the output strictly matches this JSON schema:\n${JSON.stringify(DEEP_AUDIT_SCHEMA, null, 2)}` },
           { role: 'user', content: userMessage },
         ],
         temperature: 0.2,
         response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'AuditResponse', schema: DEEP_AUDIT_SCHEMA },
+          type: 'json_object',
         },
-        safe_tokenization: true,
       },
       { signal: controller.signal }
     );
