@@ -1,13 +1,13 @@
-import { classifier } from '../providers/amd.provider.js';
+import fireworksClient from '../providers/fireworks.provider.js';
 import { sanitizeContractText } from '../lib/auditSanitize.js';
 import { validateAuditResponse } from '../lib/auditValidation.js';
 import { AUDIT_SYSTEM_PROMPT, buildAuditUserMessage } from '../lib/auditPrompt.js';
 import { AUDIT_CACHE_RESPONSE } from '../data/cache/audit.cache.js';
 
 const MODELS = {
-  INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
-  FAST_SCAN: process.env.FAST_SCAN_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
-  GLM_DEEP: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
+  INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'accounts/fireworks/models/glm-5p2',
+  FAST_SCAN: process.env.FAST_SCAN_MODEL || 'accounts/fireworks/models/glm-5p2',
+  GLM_DEEP: process.env.GEMMA_MODEL || 'accounts/fireworks/models/glm-5p2',
 };
 
 const FAST_SCAN_SCHEMA = {
@@ -104,7 +104,7 @@ function withTimeout(ms, controller = new AbortController()) {
 export async function classifyInjectionAttempt(sanitizedText, timeoutMs = LAYER5_BUDGET_MS) {
   const { controller, clear } = withTimeout(timeoutMs);
   try {
-    const response = await classifier.chat.completions.create(
+    const response = await fireworksClient.chat.completions.create(
       {
         model: MODELS.INJECTION_CLASSIFIER,
         messages: [
@@ -153,7 +153,7 @@ export async function fastFirstPassScan(contractText, opts = {}) {
   if (onStatus) onStatus('scanning');
   const { sanitized } = sanitizeContractText(contractText);
 
-  const stream = await classifier.chat.completions.create({
+  const stream = await fireworksClient.chat.completions.create({
     model: MODELS.FAST_SCAN,
     messages: [
       {
@@ -219,7 +219,7 @@ export async function deepAuditContract(contractText, opts = {}) {
 
   try {
     if (onStatus) onStatus('deep-audit');
-    const response = await classifier.chat.completions.create(
+    const response = await fireworksClient.chat.completions.create(
       {
         model: MODELS.GLM_DEEP,
         messages: [

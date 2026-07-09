@@ -1,7 +1,8 @@
-import { classifier } from '../providers/amd.provider.js';
+import fireworksClient from '../providers/fireworks.provider.js';
 
 const MODELS = {
-  GLM_MAIN: process.env.CLASSIFIER_MODEL || 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
+  CLASSIFIER: process.env.CLASSIFIER_MODEL || 'accounts/fireworks/models/glm-5p2',
+  GENERATOR: process.env.GENERATOR_MODEL || 'accounts/fireworks/models/glm-5p2',
 };
 
 const GIG_INTENT_SCHEMA = {
@@ -23,8 +24,8 @@ const GIG_INTENT_SCHEMA = {
  * Flow 1: Parses the gig description to extract basic intent.
  */
 export async function parseGigDescription(description) {
-  const response = await classifier.chat.completions.create({
-    model: MODELS.GLM_MAIN,
+  const response = await fireworksClient.chat.completions.create({
+    model: MODELS.CLASSIFIER,
     messages: [
       { 
         role: "system", 
@@ -66,8 +67,8 @@ Mandatory Clauses:
 ${clauseContext}
   `.trim();
 
-  const stream = await classifier.chat.completions.create({
-    model: MODELS.GLM_MAIN,
+  const stream = await fireworksClient.chat.completions.create({
+    model: MODELS.GENERATOR,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
@@ -91,8 +92,8 @@ export async function generateExposureReport(clauseNodes, gapClauses) {
     `- MISSING: ${node.title} (Risk: ${node.plainEnglish})`
   ).join('\n');
 
-  const response = await classifier.chat.completions.create({
-    model: MODELS.GLM_MAIN,
+  const response = await fireworksClient.chat.completions.create({
+    model: MODELS.CLASSIFIER,
     messages: [
       { role: "system", content: "You are an expert contract auditor. Summarize the covered and missing clauses in a concise, plain-English report for a freelancer." },
       { role: "user", content: `Covered:\n${coverageContext}\n\nGaps:\n${gapContext}` }

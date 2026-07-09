@@ -31,7 +31,7 @@ try {
 
 // Hard caps — the audit flow only needs the first chunk of a contract.
 export const MAX_PAGES = 10;
-const DPI = 72; // Absolute lowest DPI to guarantee we never OOM on 256MB Fly instances
+const DPI = 300; // Best text extraction quality. No memory leak because we reuse the canvas.
 // Defensive cap on the total base64 payload we hand to the Vision model —
 // protects against pathological PDFs (mostly-image, high-entropy pages).
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MB of base64 across all pages combined.
