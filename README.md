@@ -131,18 +131,18 @@ All routes are mounted under `/api`. Errors share a common shape:
 | POST | `/analyze` | `{ contractText, preset? }` + `X-Extract-Token` header | `200 { flags[], meta }` |
 | POST | `/fast-scan` | `{ contractText }` | streamed NDJSON `{ "trapCount": N }` |
 
-### Contract (`/api/contract`) — *Planned, not yet mounted*
+### Contract (`/api/contract`)
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | POST | `/start` | `{ gigDescription }` | `202 { jobId }` → WS: gigType, first questions, exposure score |
-| POST | `/answer` | `{ gigType, answeredState, answers }` | `202 { jobId }` → WS: next questions, exposure score |
-| POST | `/generate` | `{ gigType, gigDescription, answeredState }` | `202 { jobId }` → WS: streamed contract |
-| POST | `/report` | `{ clauseNodes, gapClauses }` | `202 { jobId }` → WS: exposure report |
+| POST | `/answer` | `{ contractId, answers }` | `202 { jobId }` → WS: next questions, exposure score |
+| POST | `/generate` | `{ contractId }` | `202 { jobId }` → WS: streamed contract |
+| POST | `/report` | `{ contractId }` | `202 { jobId }` → WS: exposure report |
 | GET | `/presets` | — | `200 { presets[] }` |
+| GET | `/history` | — | `200 { contracts[] }` |
+| GET | `/:id` | — | `200 { contract }` |
 
-> **Note:** All endpoints (including audit) will migrate to the job-based
-> WebSocket pattern per `VISION_PLAN.md`. HTTP calls will return `202 { jobId }`
-> and results will be delivered via WebSocket.
+> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server using `{ type: "auth", token: "..." }` and `{ type: "subscribe", jobId }` to receive live status updates and the final result. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
 
 ---
 

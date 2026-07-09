@@ -33,7 +33,8 @@ Graph-based Q&A that walks clause nodes by dependency resolution and computes an
 - `src/lib/graphWalker.js` — pure domain logic: `getNextQuestions(state, gigType)`, `getExposureScore(state, gigType)`.
 - `src/data/clauses/{software,design}.clauses.js` — clause graphs. Each node: `{ id, gigTypes, title, body, plainEnglish, exposureWeight, triggersWhen(state), dependsOn: [id...], questions: [{ field, inputType, ... }] }`. A clause is eligible when `triggersWhen` is true AND all `dependsOn` clauses have every question answered.
 - `src/services/contractAssembly.service.js` — `parseGigDescription`, `generateContractStream` (streaming), `generateExposureReport`.
-- **Not wired to HTTP yet** — `contract.routes.js`, `contract.controller.js`, `contract.service.js`, `contract.schema.js` are all 0 bytes.
+- `src/services/contract.service.js` — Core functions wrapping the interrogator (`startContract`, `answerQuestions`, `generateContract`, `generateReport`).
+- **Fully wired to HTTP** — `contract.routes.js` exposes POST endpoints for each step, integrating closely with `jobManager.js` to dispatch WS updates.
 
 ### Flow 2 — Contract Audit (wired end-to-end)
 PDF/text → red-flag detection. Routes mounted at `/api/audit`:
