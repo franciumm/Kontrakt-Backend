@@ -8,16 +8,25 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 const ACCESS_COOKIE_MS = 15 * 60 * 1000; // 15 min — matches default JWT_ACCESS_TTL
 const REFRESH_COOKIE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — matches JWT_REFRESH_TTL
 
-function setCookies(res, accessToken, refreshToken) {
+function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const common = { httpOnly: true, secure: isProduction, sameSite: 'strict' };
+  return { 
+    httpOnly: true, 
+    secure: isProduction, 
+    sameSite: isProduction ? 'none' : 'strict' 
+  };
+}
+
+function setCookies(res, accessToken, refreshToken) {
+  const common = getCookieOptions();
   res.cookie('accessToken', accessToken, { ...common, maxAge: ACCESS_COOKIE_MS });
   res.cookie('refreshToken', refreshToken, { ...common, maxAge: REFRESH_COOKIE_MS });
 }
 
 function clearCookies(res) {
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
+  const common = getCookieOptions();
+  res.clearCookie('accessToken', common);
+  res.clearCookie('refreshToken', common);
 }
 
 export const register = asyncHandler(async (req, res) => {
