@@ -1,66 +1,56 @@
 import client from '../providers/fireworks.provider.js';
+import { classifier } from '../providers/amd.provider.js';
 import { sanitizeContractText } from '../lib/auditSanitize.js';
 import { validateAuditResponse } from '../lib/auditValidation.js';
 import { AUDIT_SYSTEM_PROMPT, buildAuditUserMessage } from '../lib/auditPrompt.js';
 import { AUDIT_CACHE_RESPONSE } from '../data/cache/audit.cache.js';
 
-// Hardcoded model IDs per service (per CLAUDE.md, FIREWORKS_MODEL env is ignored).
 const MODELS = {
-  INJECTION_CLASSIFIER: 'accounts/fireworks/models/llama-guard-3-8b',
-  GEMMA_FAST: 'accounts/fireworks/models/gemma-4-26b-a4b-it',
+  INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+  GEMMA_FAST: process.env.GEMMA_MODEL || 'accounts/fireworks/models/gemma-4-26b-a4b-it',
   GLM_DEEP: 'accounts/fireworks/models/glm-5p2',
 };
 
 const FAST_SCAN_SCHEMA = {
-  $defs: {
-    FastScanResult: {
-      type: 'object',
-      properties: {
-        trapCount: { type: 'integer' },
-      },
-      required: ['trapCount'],
-    },
+  type: 'object',
+  properties: {
+    trapCount: { type: 'integer' },
   },
-  $ref: '#/$defs/FastScanResult',
+  required: ['trapCount'],
 };
 
 const DEEP_AUDIT_SCHEMA = {
-  $defs: {
-    AuditResponse: {
-      type: 'object',
-      properties: {
-        flags: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              category: {
-                type: 'string',
-                enum: [
-                  'work-for-hire-trap',
-                  'unlimited-revisions',
-                  'missing-kill-fee',
-                  'vague-scope',
-                  'ip-transfer-timing',
-                  'asymmetric-indemnification',
-                  'no-late-payment-penalty',
-                  'overbroad-nda',
-                  'auto-renewal',
-                  'jurisdiction-mismatch',
-                ],
-              },
-              severity: { type: 'string', enum: ['red', 'yellow', 'green'] },
-              clause_quote: { type: 'string' },
-              plain_english: { type: 'string' },
-            },
-            required: ['category', 'severity', 'clause_quote', 'plain_english'],
+  type: 'object',
+  properties: {
+    flags: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          category: {
+            type: 'string',
+            enum: [
+              'work-for-hire-trap',
+              'unlimited-revisions',
+              'missing-kill-fee',
+              'vague-scope',
+              'ip-transfer-timing',
+              'asymmetric-indemnification',
+              'no-late-payment-penalty',
+              'overbroad-nda',
+              'auto-renewal',
+              'jurisdiction-mismatch',
+            ],
           },
+          severity: { type: 'string', enum: ['red', 'yellow', 'green'] },
+          clause_quote: { type: 'string' },
+          plain_english: { type: 'string' },
         },
+        required: ['category', 'severity', 'clause_quote', 'plain_english'],
       },
-      required: ['flags'],
     },
   },
-  $ref: '#/$defs/AuditResponse',
+  required: ['flags'],
 };
 
 // Exported for tests / cross-module consistency assertions. Not part of the
@@ -115,7 +105,7 @@ function withTimeout(ms, controller = new AbortController()) {
 export async function classifyInjectionAttempt(sanitizedText, timeoutMs = LAYER5_BUDGET_MS) {
   const { controller, clear } = withTimeout(timeoutMs);
   try {
-    const response = await client.chat.completions.create(
+    const response = await classifier.chat.completions.create(
       {
         model: MODELS.INJECTION_CLASSIFIER,
         messages: [

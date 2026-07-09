@@ -16,13 +16,13 @@ test('constants ↔ system prompt ↔ JSON schema — all 10 categories agree', 
     assert.ok(AUDIT_SYSTEM_PROMPT.includes(c), `system prompt missing category: ${c}`);
   }
 
-  const schemaEnum = DEEP_AUDIT_SCHEMA.$defs.AuditResponse.properties.flags.items.properties.category.enum;
+  const schemaEnum = DEEP_AUDIT_SCHEMA.properties.flags.items.properties.category.enum;
   assert.deepEqual([...schemaEnum].sort(), expected);
 });
 
 test('constants ↔ JSON schema — severities agree', () => {
   const expected = [...VALID_SEVERITIES].sort();
-  const schemaEnum = DEEP_AUDIT_SCHEMA.$defs.AuditResponse.properties.flags.items.properties.severity.enum;
+  const schemaEnum = DEEP_AUDIT_SCHEMA.properties.flags.items.properties.severity.enum;
   assert.deepEqual([...schemaEnum].sort(), expected);
 });
 

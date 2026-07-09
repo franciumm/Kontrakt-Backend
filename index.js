@@ -4,6 +4,7 @@ import process from 'node:process';
 
 import { createApp } from './src/app.js';
 import { config } from './src/config/index.js';
+import { connectDB } from './DB/DB.Connect.js';
 
 // Cluster mode (ticket SEC-104). One worker per CPU core shares the listen
 // port; each worker owns its own concurrency semaphore, so the host-level
@@ -31,6 +32,15 @@ if (enableCluster && cluster.isPrimary) {
 }
 
 function startSingleProcess() {
+  // Open the mongoose connection before serving. connectDB() exits on failure
+  // (logs + process.exit(1)), so if it returns we have a live DB. Tests import
+  // createApp() directly and never run this file, so they stay DB-free.
+  connectDB().then(() => {
+    listenWithShutdown();
+  });
+}
+
+function listenWithShutdown() {
   const app = createApp();
   const server = app.listen(config.port, () => {
     // eslint-disable-next-line no-console

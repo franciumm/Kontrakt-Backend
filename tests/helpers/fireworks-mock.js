@@ -1,13 +1,15 @@
-// Mock helper for the Fireworks singleton. The services import the OpenAI
-// client object from src/providers/fireworks.provider.js and call methods on
-// its `.chat.completions` surface — that means we can patch the create method
-// in place without a module loader.
+// Mock helper for the provider singletons. Services import the OpenAI client
+// object from src/providers/fireworks.provider.js OR amd.provider.js and call
+// methods on its `.chat.completions` surface — we patch `create` in place on
+// BOTH singletons so a test doesn't need to know which provider a service uses
+// (vision → AMD, audit/classifier → Fireworks). Calls land in one shared list.
 //
 // Each test file runs in its own worker, so global state is fine within a file.
 import client from '../../src/providers/fireworks.provider.js';
+import amdClient, { classifier as amdClassifierClient } from '../../src/providers/amd.provider.js';
 
 /**
- * Patch client.chat.completions.create with a handler.
+ * Patch chat.completions.create with a handler on every provider singleton.
  *
  * handler can be:
  *   - a static value (returned as-is)
@@ -19,12 +21,13 @@ import client from '../../src/providers/fireworks.provider.js';
  */
 export function mockCreate(handler) {
   const calls = [];
-  const original = client.chat.completions.create.bind(client.chat.completions);
+  const targets = [client, amdClient, amdClassifierClient];
+  const originals = targets.map((c) => c.chat.completions.create.bind(c.chat.completions));
 
   let queue = Array.isArray(handler) ? [...handler] : null;
   const single = !queue ? handler : null;
 
-  client.chat.completions.create = async function (params, options) {
+  const stub = async function (params, options) {
     calls.push({ params, options });
     let next;
     if (queue) {
@@ -38,10 +41,16 @@ export function mockCreate(handler) {
     return next;
   };
 
+  targets.forEach((c) => {
+    c.chat.completions.create = stub;
+  });
+
   return {
     getCalls: () => calls,
     restore: () => {
-      client.chat.completions.create = original;
+      targets.forEach((c, i) => {
+        c.chat.completions.create = originals[i];
+      });
     },
   };
 }

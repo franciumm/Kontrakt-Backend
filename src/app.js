@@ -10,15 +10,9 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { rateLimit } from './middleware/rateLimiter.js';
 import { config } from './config/index.js';
 
-/**
- * Build the CORS allowlist. Default to localhost origins for dev; in
- * production, set CORS_ORIGINS=https://app.example.com,https://staging.example.com.
- * An empty allowlist (no env var) means same-origin only — the safe default.
- */
 function corsOptions() {
   const raw = process.env.CORS_ORIGINS;
   if (!raw) {
-    // Dev default: allow common local origins so the React/Vite dev server works.
     return {
       origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/],
       credentials: false,
@@ -28,11 +22,6 @@ function corsOptions() {
   return { origin: origins, credentials: false };
 }
 
-/**
- * Express application factory. Wires security middleware, routes, and the
- * centralized error handler. Exported separately from `index.js` so the test
- * suite can import the app without binding a port.
- */
 export function createApp() {
   const app = express();
 

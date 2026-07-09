@@ -1,6 +1,3 @@
-// Mongoose-backed userStore + a default AuthService singleton for production
-// wiring. Unit tests construct AuthService directly with an in-memory store
-// (no DB) — they don't import this file.
 import { User } from '../../DB/models/User.Model.js';
 import { AuthService } from './auth.service.js';
 

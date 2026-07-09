@@ -1,7 +1,10 @@
-import client from '../providers/fireworks.provider.js';
+import client from '../providers/amd.provider.js';
 
+// Vision OCR runs on the self-hosted AMD vLLM endpoint, not Fireworks — the
+// 90B vision model is dedicated-only and pricey. VISION_MODEL is the
+// --served-model-name on the vLLM server (default = HuggingFace repo id).
 const MODELS = {
-  VISION: 'accounts/fireworks/models/llama-v3p2-90b-vision-instruct',
+  VISION: process.env.VISION_MODEL || 'meta-llama/Llama-3.2-90B-Vision-Instruct',
 };
 
 const SYSTEM_PROMPT = `You are Kontrakt-OCR, a precise document transcription engine for legal contracts.
