@@ -11,6 +11,7 @@ function makeClient({ baseURLEnv, apiKeyEnv, defaultPort, label }) {
   return new OpenAI({
     baseURL: baseURL || `http://localhost:${defaultPort}/v1`,
     apiKey: process.env[apiKeyEnv] || 'amd-no-key-needed',
+    defaultHeaders: { 'Bypass-Tunnel-Reminder': 'true' },
     maxRetries: 2,
     timeout: 30 * 60 * 1000, // 30 min — 90B vision OCR can be slow
   });
