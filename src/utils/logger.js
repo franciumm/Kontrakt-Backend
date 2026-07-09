@@ -1,19 +1,28 @@
-// Minimal logger — keeps `errorHandler.js` and any future module working
-// without pulling in a heavyweight logging dependency. In production you'd
-// swap this for pino/winston; for now it forwards to console with levels.
-const LEVELS = ['error', 'warn', 'info', 'debug'];
+import pino from 'pino';
+import { config } from '../config/index.js';
 
-function emit(level, msg, meta) {
-  const ts = new Date().toISOString();
-  const line = `[${ts}] ${level.toUpperCase()} ${msg}`;
-  const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
-  if (meta && Object.keys(meta).length) {
-    fn(line, JSON.stringify(meta));
-  } else {
-    fn(line);
-  }
+// Pino configuration with built-in redaction for sensitive fields
+const pinoConfig = {
+  level: config.nodeEnv === 'test' ? 'silent' : 'info',
+  redact: {
+    paths: [
+      'key', 'secret', 'password', 'token', 'auth', 'authorization', 'cookie',
+      '*.key', '*.secret', '*.password', '*.token', '*.auth', '*.authorization', '*.cookie'
+    ],
+    censor: '[REDACTED]',
+  },
+};
+
+// Use pino-pretty in development for readable console output
+if (config.nodeEnv !== 'production' && config.nodeEnv !== 'test') {
+  pinoConfig.transport = {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname',
+    },
+  };
 }
 
-export const logger = Object.fromEntries(
-  LEVELS.map((level) => [level, (msg, meta) => emit(level, msg, meta)])
-);
+export const logger = pino(pinoConfig);

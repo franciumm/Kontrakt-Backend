@@ -25,6 +25,10 @@ function corsOptions() {
 export function createApp() {
   const app = express();
 
+  if (config.nodeEnv === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors(corsOptions()));

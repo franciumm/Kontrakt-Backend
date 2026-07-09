@@ -4,16 +4,14 @@ import process from 'node:process';
 
 import { createApp } from './src/app.js';
 import { config } from './src/config/index.js';
+import mongoose from 'mongoose';
 import { connectDB } from './DB/DB.Connect.js';
+import { attachWebSocketServer } from './src/ws/server.js';
+import { jobManager } from './src/ws/jobManager.js';
+import { closeHealthConnections } from './src/services/health.service.js';
 
-// Cluster mode (ticket SEC-104). One worker per CPU core shares the listen
-// port; each worker owns its own concurrency semaphore, so the host-level
-// cap on concurrent heavy work = (workers × perWorkerCap). The primary only
-// forks and respawns — no request handling.
-//
-// Disabled in test mode (tests import createApp() directly) and explicitly
-// opt-in via CLUSTER=1 in other environments, so a single-process `npm start`
-// in dev remains the simple path.
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
 const enableCluster =
   config.nodeEnv !== 'test' && process.env.CLUSTER === '1' && os.cpus().length > 1;
 
@@ -50,11 +48,41 @@ function listenWithShutdown() {
     );
   });
 
-  // Graceful shutdown — in production behind a load balancer this lets in-flight
-  // requests finish before the process exits.
+  // Attach WebSocket server to the same HTTP server (path: /ws).
+  const wss = attachWebSocketServer(server);
+
+  let shuttingDown = false;
+  async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    // eslint-disable-next-line no-console
+    console.log(`[shutdown] ${signal} received — draining connections`);
+
+    const forceExit = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error('[shutdown] timeout — forcing exit');
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    forceExit.unref?.();
+
+    try {
+      wss.clients.forEach((ws) => ws.close(1001, 'Server shutting down'));
+      await new Promise((resolve) => wss.close(resolve));
+      await new Promise((resolve) => server.close(resolve));
+      await jobManager.close?.();
+      await mongoose.disconnect();
+      await closeHealthConnections();
+      clearTimeout(forceExit);
+      process.exit(0);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[shutdown] error during cleanup', err);
+      process.exit(1);
+    }
+  }
+
   for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      server.close(() => process.exit(0));
-    });
+    process.on(signal, () => shutdown(signal));
   }
 }
+

@@ -21,11 +21,21 @@ function classifyError(err) {
     };
   }
 
+  if (err.name === 'CastError' && err.kind === 'ObjectId') {
+    return {
+      statusCode: HTTP_STATUS.BAD_REQUEST,
+      body: {
+        success: false,
+        error: { message: 'Invalid ID format', code: 'INVALID_OBJECT_ID' },
+      },
+    };
+  }
+
   // Multer errors (LIMIT_FILE_SIZE, LIMIT_UNEXPECTED_FILE, etc.)
   if (err.name === 'MulterError' || err?.code?.startsWith?.('LIMIT_')) {
     const message =
       err.code === 'LIMIT_FILE_SIZE'
-        ? 'File too large. Maximum size is 5 MB.'
+        ? 'File too large. Maximum size is 2 MB.'
         : err.message || 'Upload error.';
     return {
       statusCode: HTTP_STATUS.BAD_REQUEST,
