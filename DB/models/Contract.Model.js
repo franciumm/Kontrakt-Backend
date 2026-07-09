@@ -37,8 +37,8 @@ const contractSchema = new mongoose.Schema(
       default: '',
     },
     exposureReport: {
-      type: String,
-      default: '',
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     status: {
       type: String,

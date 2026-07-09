@@ -92,14 +92,48 @@ export async function generateExposureReport(clauseNodes, gapClauses) {
     `- MISSING: ${node.title} (Risk: ${node.plainEnglish})`
   ).join('\n');
 
+  const EXPOSURE_REPORT_SCHEMA = {
+    type: "object",
+    properties: {
+      summary: { type: "string", description: "Overall summary of the contract's risk profile" },
+      covered: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" }
+          },
+          required: ["title", "description"]
+        }
+      },
+      missing: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            risk: { type: "string" },
+            recommendation: { type: "string" }
+          },
+          required: ["title", "risk", "recommendation"]
+        }
+      }
+    },
+    required: ["summary", "covered", "missing"]
+  };
+
   const response = await fireworksClient.chat.completions.create({
     model: MODELS.CLASSIFIER,
     messages: [
-      { role: "system", content: "You are an expert contract auditor. Summarize the covered and missing clauses in a concise, plain-English report for a freelancer." },
+      { role: "system", content: `You are an expert contract auditor. Summarize the covered and missing clauses in a structured report for a freelancer. Return as JSON matching this schema:\n${JSON.stringify(EXPOSURE_REPORT_SCHEMA, null, 2)}` },
       { role: "user", content: `Covered:\n${coverageContext}\n\nGaps:\n${gapContext}` }
     ],
-    temperature: 0.2,
+    temperature: 0.1,
+    response_format: {
+      type: "json_object"
+    }
   });
 
-  return response.choices[0].message.content;
+  return JSON.parse(response.choices[0].message.content);
 }

@@ -3,7 +3,7 @@ import amdVisionClient from '../providers/amd.provider.js';
 // Vision OCR runs on the AMD cloud endpoint (port 8000).
 // Ensure AMD_BASE_URL is set in your .env / Fly secrets.
 const MODELS = {
-  VISION: process.env.VISION_MODEL || 'Llama-3.2-11B-Vision-Instruct-Q4_K_M.gguf',
+  VISION: process.env.VISION_MODEL || 'llava-v1.6-34b.Q4_K_M.gguf',
 };
 
 const SYSTEM_PROMPT = `You are Kontrakt-OCR, a precise document transcription engine for legal contracts.

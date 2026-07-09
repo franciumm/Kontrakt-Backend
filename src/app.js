@@ -11,15 +11,10 @@ import { rateLimit } from './middleware/rateLimiter.js';
 import { config } from './config/index.js';
 
 function corsOptions() {
-  const raw = process.env.CORS_ORIGINS;
-  if (!raw) {
-    return {
-      origin: [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/],
-      credentials: false,
-    };
-  }
-  const origins = raw.split(',').map((s) => s.trim()).filter(Boolean);
-  return { origin: origins, credentials: false };
+  return {
+    origin: true,
+    credentials: true,
+  };
 }
 
 export function createApp() {

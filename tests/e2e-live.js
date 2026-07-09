@@ -121,7 +121,7 @@ async function runTest() {
       method: 'POST',
       body: JSON.stringify({
         contractId,
-        answers: { "test_q": "test_answer" }
+        answers: { "totalFee": "5000", "netDays": "30" }
       })
     });
     await waitForJobViaWs(answerRes.jobId);
@@ -132,6 +132,20 @@ async function runTest() {
       body: JSON.stringify({ contractId })
     });
     await waitForJobViaWs(genRes.jobId);
+
+    console.log(`Generating exposure report...`);
+    const repRes = await request('/contract/report', {
+      method: 'POST',
+      body: JSON.stringify({ contractId })
+    });
+    await waitForJobViaWs(repRes.jobId);
+
+    console.log(`Fetching contract to verify exposure report type...`);
+    const contractRes = await request(`/contract/${contractId}`);
+    console.log(`Exposure Report Type:`, typeof contractRes.data.exposureReport);
+    if (typeof contractRes.data.exposureReport === 'object') {
+      console.log(`Exposure Report Structure:`, Object.keys(contractRes.data.exposureReport));
+    }
 
     console.log('\n--- 4. Testing Audit Flow ---');
     const pdfPath = '/Users/francium/Desktop/software-development-agreement-contract-template-word.pdf';
