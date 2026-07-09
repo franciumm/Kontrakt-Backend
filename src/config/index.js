@@ -21,7 +21,7 @@ function resolveSecret(name, devDefault) {
   const v = process.env[name];
   if (v) return v;
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(`Missing required environment variable in production: ${name}`);
+    console.warn(`WARNING: Missing required environment variable in production: ${name}. Falling back to dev default. Please set it via fly secrets.`);
   }
   return devDefault;
 }

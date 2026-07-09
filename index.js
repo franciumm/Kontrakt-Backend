@@ -40,7 +40,7 @@ function startSingleProcess() {
 
 function listenWithShutdown() {
   const app = createApp();
-  const server = app.listen(config.port, () => {
+  const server = app.listen(config.port, '0.0.0.0', () => {
     // eslint-disable-next-line no-console
     console.log(
       `Kontrakt API listening on port ${config.port} in ${config.nodeEnv} mode` +
