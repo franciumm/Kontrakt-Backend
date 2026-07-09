@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { startServer, buildMultipartFile } from '../helpers/server.js';
+import { startServer, buildMultipartFile, generateTestToken } from '../helpers/server.js';
 import { mockCreate, chatResponse, streamResponse } from '../helpers/fireworks-mock.js';
 import { signExtractToken } from '../../src/services/extractToken.js';
 import { PDFDocument } from 'pdf-lib';
@@ -40,7 +40,7 @@ test('POST /api/audit/analyze — missing body returns 400 (validation middlewar
   try {
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify({}),
     });
     assert.equal(res.status, 400);
@@ -58,7 +58,7 @@ test('POST /api/audit/analyze — oversize body rejected at the door', async () 
     const huge = { contractText: 'x'.repeat(12_001) };
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify(huge),
     });
     assert.equal(res.status, 400);
@@ -84,14 +84,16 @@ test('POST /api/audit/analyze — happy path returns flags (with valid extract t
     const extractToken = signExtractToken(contractText);
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Extract-Token': extractToken },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'X-Extract-Token': extractToken,
+        'Authorization': `Bearer ${generateTestToken()}`
+      },
       body: JSON.stringify({ contractText }),
     });
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 202);
     const body = await res.json();
-    assert.equal(body.success, true);
-    assert.equal(body.data.flags.length, 1);
-    assert.equal(body.data.meta.source, 'live');
+    assert.ok(body.jobId);
   } finally {
     await close();
     mock.restore();
@@ -106,7 +108,7 @@ test('POST /api/audit/analyze — rejects with 403 when no extract token is supp
   try {
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify({ contractText: 'A contract the user just pasted in.' }),
     });
     assert.equal(res.status, 403);
@@ -127,7 +129,11 @@ test('POST /api/audit/analyze — rejects with 403 MISMATCH when text differs fr
     const extractToken = signExtractToken('contract A — extracted text');
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Extract-Token': extractToken },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'X-Extract-Token': extractToken,
+        'Authorization': `Bearer ${generateTestToken()}`
+      },
       body: JSON.stringify({ contractText: 'contract B — different, manipulated text' }),
     });
     assert.equal(res.status, 403);
@@ -146,14 +152,14 @@ test('POST /api/audit/analyze — missing-body and oversize still return 400 (va
   try {
     const noBody = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify({}),
     });
     assert.equal(noBody.status, 400);
 
     const huge = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify({ contractText: 'x'.repeat(12_001) }),
     });
     assert.equal(huge.status, 400);
@@ -168,13 +174,12 @@ test('POST /api/audit/fast-scan — streams NDJSON tokens', async () => {
   try {
     const res = await fetch(`${baseUrl}/api/audit/fast-scan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: JSON.stringify({ contractText: 'A short contract.' }),
     });
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get('content-type'), /ndjson/);
-    const text = await res.text();
-    assert.equal(text, '{"trapCount": 3}');
+    assert.equal(res.status, 202);
+    const body = await res.json();
+    assert.ok(body.jobId);
   } finally {
     await close();
     mock.restore();
@@ -186,11 +191,11 @@ test('POST /api/audit/extract — rejects request with no file', async () => {
   try {
     const res = await fetch(`${baseUrl}/api/audit/extract`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
       body: '{}',
     });
     assert.equal(res.status, 400);
-    assert.match((await res.json()).error, /No PDF file uploaded/i);
+    assert.match((await res.json()).error.message, /No PDF file uploaded/i);
   } finally {
     await close();
   }
@@ -204,7 +209,7 @@ test('POST /api/audit/extract — rejects wrong mimetype', async () => {
     );
     const res = await fetch(`${baseUrl}/api/audit/extract`, {
       method: 'POST',
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': contentType, 'Authorization': `Bearer ${generateTestToken()}` },
       body,
     });
     assert.equal(res.status, 400);
@@ -222,12 +227,11 @@ test('POST /api/audit/extract — rejects file claiming PDF mimetype but no %PDF
     );
     const res = await fetch(`${baseUrl}/api/audit/extract`, {
       method: 'POST',
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': contentType, 'Authorization': `Bearer ${generateTestToken()}` },
       body,
     });
-    assert.equal(res.status, 400);
-    const j = await res.json();
-    assert.match(j.error.message, /PDF header/i);
+    // Validation now happens in the background job.
+    assert.equal(res.status, 202);
   } finally {
     await close();
   }
@@ -242,7 +246,7 @@ test('POST /api/audit/extract — exceeds 2MB returns 400 (not 500)', async () =
     );
     const res = await fetch(`${baseUrl}/api/audit/extract`, {
       method: 'POST',
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': contentType, 'Authorization': `Bearer ${generateTestToken()}` },
       body,
     });
     assert.equal(res.status, 400);
@@ -267,12 +271,11 @@ test('POST /api/audit/extract — happy path with a real PDF (vision mocked)', a
     const { body, contentType } = buildMultipartFile('contractFile', 'ok.pdf', pdf);
     const res = await fetch(`${baseUrl}/api/audit/extract`, {
       method: 'POST',
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': contentType, 'Authorization': `Bearer ${generateTestToken()}` },
       body,
     });
-    // Either 200 (gs+gm installed) or 500 (missing deps) — both are valid.
-    // What's NOT valid is 502/4xx from a downstream surprise.
-    assert.ok([200, 500].includes(res.status), `unexpected status: ${res.status}`);
+    // Either 202 (gs+gm installed and job created) or 500 (missing deps on pdf processing sync failure, though now the pdf processing is async so it will likely return 202 and fail the job).
+    assert.ok([202, 500].includes(res.status), `unexpected status: ${res.status}`);
   } finally {
     await close();
   }

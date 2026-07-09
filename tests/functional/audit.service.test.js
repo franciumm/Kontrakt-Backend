@@ -21,7 +21,7 @@ test('deepAuditContract — success returns flags + meta.source=live', async () 
   // Promise resolution picks first. Make the mock smart: respond based on
   // the model being called.
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     return deepResponse;
   });
 
@@ -46,7 +46,7 @@ test('deepAuditContract — Layer 5 suppresses flags on INJECTION_ATTEMPT', asyn
     }],
   }));
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     return deepResponse;
   });
 
@@ -64,7 +64,7 @@ test('deepAuditContract — Layer 1 sanitizer is applied (truncation in meta)', 
   const layer5Response = chatResponse('SAFE');
   const deepResponse = chatResponse(JSON.stringify({ flags: [] }));
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     return deepResponse;
   });
 
@@ -82,7 +82,7 @@ test('deepAuditContract — schema validation failure throws 502', async () => {
   const layer5Response = chatResponse('SAFE');
   const deepResponse = chatResponse(JSON.stringify({ not_flags: [] })); // missing flags
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     return deepResponse;
   });
 
@@ -106,7 +106,7 @@ test('deepAuditContract — system-prompt leakage in output throws 502', async (
     }],
   }));
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     return deepResponse;
   });
 
@@ -124,7 +124,7 @@ test('deepAuditContract — AbortController fires → 503 latency budget exceede
   const layer5Response = chatResponse('SAFE');
   // Deep call aborts.
   const mock = mockCreate((params) => {
-    if (params.model.toLowerCase().includes('llama-guard')) return layer5Response;
+    if (params.messages[0].content.includes('UNTRUSTED')) return layer5Response;
     throw abortError();
   });
 

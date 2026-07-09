@@ -7,8 +7,8 @@ import { AUDIT_CACHE_RESPONSE } from '../data/cache/audit.cache.js';
 
 const MODELS = {
   INJECTION_CLASSIFIER: process.env.CLASSIFIER_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-  GEMMA_FAST: process.env.GEMMA_MODEL || 'accounts/fireworks/models/gemma-4-26b-a4b-it',
-  GLM_DEEP: 'accounts/fireworks/models/glm-5p2',
+  GEMMA_FAST: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
+  GLM_DEEP: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
 };
 
 const FAST_SCAN_SCHEMA = {
@@ -146,9 +146,12 @@ export async function classifyInjectionAttempt(sanitizedText, timeoutMs = LAYER5
  * truncation on some valid responses.
  *
  * @param {string} contractText — RAW contract text; sanitized internally.
+ * @param {{ onStatus?: (status: string, data?: object) => void }} [opts]
  * @returns {Promise<AsyncIterable>} streamed chunks from the OpenAI SDK
  */
-export async function fastFirstPassScan(contractText) {
+export async function fastFirstPassScan(contractText, opts = {}) {
+  const { onStatus } = opts;
+  if (onStatus) onStatus('scanning');
   const { sanitized } = sanitizeContractText(contractText);
 
   const stream = await client.chat.completions.create({
@@ -184,13 +187,16 @@ export async function fastFirstPassScan(contractText) {
  *      by the deep model — defense-in-depth against coercion)
  *
  * @param {string} contractText
- * @param {{ preset?: string }} [opts] — when `preset` is a known demo preset
- *   (currently `'bad-client'`), a timeout falls back to the demo cache instead
- *   of surfacing a 503, so the hackathon demo never hard-fails. Non-preset and
- *   non-timeout errors still throw.
+ * @param {{ preset?: string, onStatus?: (status: string, data?: object) => void }} [opts]
+ *   `preset`: when set to a known demo preset (currently `'bad-client'`), a
+ *   timeout falls back to the demo cache instead of surfacing a 503.
+ *   `onStatus`: callback for WebSocket status emission at each pipeline stage.
  */
 export async function deepAuditContract(contractText, opts = {}) {
+  const { onStatus } = opts;
+
   // Layer 1 — sanitize once, reuse for both Layer 5 and the deep call.
+  if (onStatus) onStatus('sanitizing');
   const { sanitized, flaggedPatterns, truncated } = sanitizeContractText(contractText);
 
   // Layer 2 — build hardened user message.
@@ -207,6 +213,7 @@ export async function deepAuditContract(contractText, opts = {}) {
   // Awaiting in `finally` would defeat the parallelism, so we attach a
   // no-op rejection handler to avoid unhandled-rejection warnings on the
   // error path of the deep call (where this promise can still be pending).
+  if (onStatus) onStatus('running-classifier');
   const layer5Promise = classifyInjectionAttempt(sanitized);
   layer5Promise.catch(() => {}); // swallow — handled explicitly below
 
@@ -214,6 +221,7 @@ export async function deepAuditContract(contractText, opts = {}) {
   const { controller, clear } = withTimeout(LATENCY_BUDGET_MS);
 
   try {
+    if (onStatus) onStatus('deep-audit');
     const response = await client.chat.completions.create(
       {
         model: MODELS.GLM_DEEP,
@@ -234,6 +242,7 @@ export async function deepAuditContract(contractText, opts = {}) {
     const rawOutput = response.choices?.[0]?.message?.content;
 
     // Layer 3 — validate output.
+    if (onStatus) onStatus('validating-output');
     const validation = validateAuditResponse(rawOutput);
     if (!validation.valid) {
       console.warn(`[audit] validation failed: ${validation.reason}`);

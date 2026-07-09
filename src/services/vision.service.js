@@ -1,10 +1,11 @@
-import client from '../providers/amd.provider.js';
+import client from '../providers/fireworks.provider.js';
 
-// Vision OCR runs on the self-hosted AMD vLLM endpoint, not Fireworks — the
-// 90B vision model is dedicated-only and pricey. VISION_MODEL is the
-// --served-model-name on the vLLM server (default = HuggingFace repo id).
+// Vision OCR now runs on the Fireworks Gemma 4 31B IT deployment (qi296nit),
+// which supports multimodal (vision) inputs. Previously this pointed at the
+// self-hosted AMD vLLM endpoint (LLaVA-Phi-3-Mini). The AMD provider now
+// only serves the injection classifier (Layer 5) at port 8001.
 const MODELS = {
-  VISION: process.env.VISION_MODEL || 'meta-llama/Llama-3.2-90B-Vision-Instruct',
+  VISION: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
 };
 
 const SYSTEM_PROMPT = `You are Kontrakt-OCR, a precise document transcription engine for legal contracts.
