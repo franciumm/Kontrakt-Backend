@@ -1,27 +1,22 @@
 import client from '../providers/fireworks.provider.js';
 
 const MODELS = {
-  GLM_MAIN: 'accounts/fireworks/models/glm-5p2',
+  GLM_MAIN: process.env.GEMMA_MODEL || 'accounts/francium/deployments/qi296nit',
 };
 
 const GIG_INTENT_SCHEMA = {
-  $defs: {
-    GigIntent: {
-      type: "object",
-      properties: {
-        gigType: {
-          type: "string",
-          enum: ["design", "software", "marketing", "other"]
-        },
-        entities: {
-          type: "array",
-          items: { type: "string" }
-        }
-      },
-      required: ["gigType", "entities"]
+  type: "object",
+  properties: {
+    gigType: {
+      type: "string",
+      enum: ["design", "software", "marketing", "other"]
+    },
+    entities: {
+      type: "array",
+      items: { type: "string" }
     }
   },
-  $ref: "#/$defs/GigIntent"
+  required: ["gigType", "entities"]
 };
 
 /**
