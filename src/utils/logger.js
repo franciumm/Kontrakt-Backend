@@ -13,8 +13,17 @@ const pinoConfig = {
   },
 };
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
+let hasPinoPretty = false;
+try {
+  require.resolve('pino-pretty');
+  hasPinoPretty = true;
+} catch (e) {}
+
 // Use pino-pretty in development for readable console output
-if (config.nodeEnv !== 'production' && config.nodeEnv !== 'test') {
+if (config.nodeEnv !== 'production' && config.nodeEnv !== 'test' && hasPinoPretty) {
   pinoConfig.transport = {
     target: 'pino-pretty',
     options: {
