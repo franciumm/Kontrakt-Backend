@@ -187,9 +187,9 @@
 
 ### Connection
 ```
-ws://host/ws?token=<JWT_ACCESS_TOKEN>
+ws://host/ws
 ```
-Server verifies token on upgrade. Rejects with `4401` close code if invalid/expired.
+Server automatically verifies the JWT `accessToken` from `HttpOnly` cookies on connection. Alternatively, clients can send a `{ "type": "auth", "token": "..." }` message within 5 seconds. Rejects with `4401` close code if invalid/expired or missing.
 
 ### Client → Server Messages
 ```jsonc

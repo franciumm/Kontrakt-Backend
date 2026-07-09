@@ -142,7 +142,7 @@ All routes are mounted under `/api`. Errors share a common shape:
 | GET | `/history` | — | `200 { contracts[] }` |
 | GET | `/:id` | — | `200 { contract }` |
 
-> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server using `{ type: "auth", token: "..." }` and `{ type: "subscribe", jobId }` to receive live status updates and the final result. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
+> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server to receive live status updates and the final result. The WebSocket connection automatically authenticates using the `HttpOnly` access token cookie. Then, clients send `{ "type": "subscribe", "jobId": "..." }`. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
 
 ---
 

@@ -39,11 +39,32 @@ export function attachWebSocketServer(httpServer) {
     clearInterval(heartbeat);
   });
 
-  wss.on('connection', (ws) => {
-    // Auth timeout: disconnect if no auth message is received within 5s.
+  wss.on('connection', (ws, req) => {
+    // Parse cookies from the handshake request to support HttpOnly auth.
+    const cookies = req.headers.cookie || '';
+    const tokenMatch = cookies.match(/(?:(?:^|.*;\s*)accessToken\s*\=\s*([^;]*).*$)|^.*$/);
+    const cookieToken = tokenMatch ? tokenMatch[1] : null;
+
+    if (cookieToken) {
+      try {
+        const auth = authenticateWsToken(cookieToken);
+        ws.userId = auth.user._id;
+        ws.send(JSON.stringify({
+          type: 'connected',
+          userId: auth.user._id,
+          timestamp: new Date().toISOString(),
+        }));
+      } catch (err) {
+        // If cookie token is invalid, we don't drop immediately; they might send an auth message.
+      }
+    }
+
+    // Auth timeout: disconnect if no userId is set within 5s.
     const authTimeout = setTimeout(() => {
-      ws.close(4401, 'Authentication timeout');
+      if (!ws.userId) ws.close(4401, 'Authentication timeout');
     }, 5000);
+
+    if (ws.userId) clearTimeout(authTimeout);
 
     ws.isAlive = true;
 
