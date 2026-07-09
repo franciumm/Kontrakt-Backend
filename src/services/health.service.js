@@ -17,7 +17,7 @@ function getRedisClient() {
   return redisClient;
 }
 
-export async function checkMongo() {
+async function checkMongo() {
   if (mongoose.connection.readyState !== 1) {
     return { ok: false, error: 'not connected' };
   }
@@ -29,7 +29,7 @@ export async function checkMongo() {
   }
 }
 
-export async function checkRedis() {
+async function checkRedis() {
   const client = getRedisClient();
   if (!client) return { ok: true, skipped: true };
   try {

@@ -2,7 +2,7 @@ import { User } from '../../DB/models/User.Model.js';
 import { AuthService } from './auth.service.js';
 
 /** @type {import('./auth.service.js').UserStore} */
-export const userStore = {
+const userStore = {
   findByEmail: (email) => User.findOne({ email }),
   findById: (id) => User.findById(id),
   create: ({ name, email, password }) => User.create({ name, email, password }),

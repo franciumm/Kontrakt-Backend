@@ -6,6 +6,7 @@
 import { WebSocketServer } from 'ws';
 import { authenticateWsToken } from './auth.js';
 import { jobManager } from './jobManager.js';
+import { STATUS_STEPS } from '../constants/jobStatus.js';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -152,6 +153,7 @@ async function handleSubscribe(ws, jobId) {
     jobId,
     state: job.state,
     operation: job.operation,
+    steps: STATUS_STEPS[job.operation] || [],
   }));
 
   // If the job already completed or failed while the client was

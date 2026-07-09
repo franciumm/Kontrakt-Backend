@@ -3,7 +3,7 @@ import { pdfUpload } from '../middleware/upload.js';
 import { concurrencyCap } from '../middleware/concurrency.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { requireAuth, extractTokenGate } from '../middleware/auth.js';
-import { auditTextSchema, fastScanSchema } from '../validators/audit.schema.js';
+import { auditTextSchema } from '../validators/audit.schema.js';
 import { validateObjectIdParam } from '../middleware/validateObjectId.js';
 import { extractPdfText, analyzeContract, fastScanContract, getAuditHistory, getAuditById } from '../controllers/audit.controller.js';
 
@@ -28,7 +28,7 @@ router.post('/extract', requireAuth, pdfUpload.single('contractFile'), extractCo
 router.post('/analyze', requireAuth, validateRequest(auditTextSchema), extractTokenGate, analyzeContract);
 
 // 3. Optional: Fast stream scan.
-router.post('/fast-scan', requireAuth, validateRequest(fastScanSchema), fastScanContract);
+router.post('/fast-scan', requireAuth, validateRequest(auditTextSchema), fastScanContract);
 
 // 4. History: paginated list of user's past audits.
 router.get('/history', requireAuth, getAuditHistory);
