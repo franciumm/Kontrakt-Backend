@@ -65,7 +65,7 @@ contracts for red flags. Two core flows:
   (`baseURL: https://api.fireworks.ai/inference/v1`). Models:
   - `glm-5p2` — deep audit
   - `accounts/francium/deployments/qi296nit` (Gemma 4 31B IT) — fast scan + vision OCR
-- **Injection classifier**: Self-hosted on AMD Cloud (`Qwen/Qwen2.5-7B-Instruct`)
+- **Injection classifier**: Self-hosted on AMD Cloud (`llava-next-6b-instruct`)
   via OpenAI-compatible endpoint.
 - **PDF processing**: Sent to Vision model as base64 images from frontend.
 - **Auth**: `bcryptjs` + `jsonwebtoken`.
@@ -83,7 +83,7 @@ contracts for red flags. Two core flows:
 | 2 — Harden prompt | Role-anchored system prompt + random per-call delimiters + sandwich defense | `src/lib/auditPrompt.js` |
 | 3 — Validate output | JSON-schema check + length bounds + system-prompt leakage detection | `src/lib/auditValidation.js` |
 | 4 — Latency budget | 5-minute `AbortController` → 503, with demo-cache fallback for `bad-client` preset | `src/services/audit.service.js` |
-| 5 — Classify injection | Qwen 2.5 7B gate with hardened, delimiter-wrapped prompt; **fail-closed** on timeout | `src/services/audit.service.js` |
+| 5 — Classify injection | Llava-next 6B gate with hardened, delimiter-wrapped prompt; **fail-closed** on timeout | `src/services/audit.service.js` |
 
 The classifier runs **in parallel** with the deep audit on Layer-1-sanitized
 text. If it fires `INJECTION_ATTEMPT` or times out, returned flags are
@@ -182,7 +182,7 @@ cp .env.example .env       # fill in real values; never commit .env
 | `JWT_SALT_ROUNDS` | no | `12` | bcrypt cost factor |
 | `GEMMA_MODEL` | yes | `accounts/francium/deployments/qi296nit` | Fireworks deployment ID for fast-scan and Vision OCR |
 | `AMD_CLASSIFIER_BASE_URL` | yes | — | Injection classifier endpoint on AMD Cloud |
-| `CLASSIFIER_MODEL` | no | `Qwen/Qwen2.5-7B-Instruct` | Model name on the classifier server |
+| `CLASSIFIER_MODEL` | no | `llava-next-6b-instruct` | Model name on the classifier server |
 | `CLUSTER` | no | off | Set `1` to enable multi-core cluster mode |
 
 ### Run
