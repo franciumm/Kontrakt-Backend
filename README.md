@@ -64,10 +64,10 @@ contracts for red flags. Two core flows:
 - **LLM provider**: Fireworks AI via the `openai` SDK
   (`baseURL: https://api.fireworks.ai/inference/v1`). Models:
   - `glm-5p2` — deep audit
-  - `accounts/francium/deployments/qi296nit` (Gemma 4 31B IT) — fast scan + vision OCR
-- **Injection classifier**: Self-hosted on AMD Cloud (`llava-next-6b-instruct`)
-  via OpenAI-compatible endpoint.
-- **PDF processing**: Sent to Vision model as base64 images from frontend.
+  - `accounts/francium/deployments/qi296nit` (Gemma 4 31B IT) — fast scan
+- **Self-hosted AMD Cloud** (OpenAI-compatible endpoints):
+  - **Injection classifier**: `llava-next-6b-instruct`
+  - **Vision OCR**: `llava-v1.6-34b.Q4_K_M.gguf` (receives base64 images from frontend)
 - **Auth**: `bcryptjs` + `jsonwebtoken`.
 - **WebSocket**: `ws` package for real-time job status streaming.
 
@@ -180,7 +180,9 @@ cp .env.example .env       # fill in real values; never commit .env
 | `JWT_ACCESS_TTL` | no | `15m` | |
 | `JWT_REFRESH_TTL` | no | `7d` | |
 | `JWT_SALT_ROUNDS` | no | `12` | bcrypt cost factor |
-| `GEMMA_MODEL` | yes | `accounts/francium/deployments/qi296nit` | Fireworks deployment ID for fast-scan and Vision OCR |
+| `GEMMA_MODEL` | yes | `accounts/francium/deployments/qi296nit` | Fireworks deployment ID for fast-scan |
+| `AMD_BASE_URL` | yes | — | Vision OCR endpoint on AMD Cloud |
+| `VISION_MODEL` | no | `llava-v1.6-34b.Q4_K_M.gguf` | Model name served on the vision endpoint |
 | `AMD_CLASSIFIER_BASE_URL` | yes | — | Injection classifier endpoint on AMD Cloud |
 | `CLASSIFIER_MODEL` | no | `llava-next-6b-instruct` | Model name on the classifier server |
 | `CLUSTER` | no | off | Set `1` to enable multi-core cluster mode |
