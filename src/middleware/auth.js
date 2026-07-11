@@ -10,7 +10,7 @@ function extractBearer(req) {
 }
 
 export function requireAuth(req, res, next) {
-  const token = extractBearer(req) || req.cookies?.Kontrakt_access_token;
+  const token = extractBearer(req);
   try {
     req.user = authService.verifyAccessToken(token);
     next();

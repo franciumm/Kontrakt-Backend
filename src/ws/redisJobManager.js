@@ -7,7 +7,7 @@ import { JOB_STATE } from '../constants/jobStatus.js';
 
 const JOB_KEY_PREFIX = 'kontrakt:job:';
 const JOB_EVENTS_CHANNEL = 'kontrakt:job:events';
-const JOB_TTL_SECONDS = 5 * 60;
+const JOB_TTL_SECONDS = 30 * 60;
 
 function serializeJob(job) {
   return JSON.stringify({
@@ -186,9 +186,11 @@ export class RedisJobManager {
   }
 
   _scheduleLocalCleanup(jobId) {
+    // 10-second delay instead of matching the full 30-minute Redis TTL.
+    // This allows final messages to drain before freeing the local Set, preventing an OOM memory leak.
     setTimeout(() => {
       this.localJobs.delete(jobId);
-    }, JOB_TTL_SECONDS * 1000);
+    }, 10 * 1000);
   }
 
   async close() {

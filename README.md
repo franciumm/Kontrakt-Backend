@@ -6,8 +6,7 @@ contracts for red flags. Two core flows:
 
 1. **Contract Interrogator** — a clause-graph walker that drives a Q&A
    wizard, resolves clause dependencies, computes an exposure-coverage score,
-   and assembles a flowing contract via LLM. *(Domain logic complete; HTTP
-   routes in progress — see `VISION_PLAN.md`)*
+   and assembles a flowing contract via LLM. *(Fully implemented end-to-end)*
 2. **Contract Audit Engine** — an LLM-powered auditor that scans pasted or
    PDF-extracted contracts for dangerous clauses, defended by a five-layer
    prompt-injection security architecture.
@@ -42,8 +41,7 @@ contracts for red flags. Two core flows:
 ### Identity & Enforcement
 - **Auth** — JWT access + refresh tokens, bcrypt-hashed passwords, hashed
   refresh-token storage with **reuse detection** (a replayed token revokes every
-  session for the user). Cookies are `httpOnly`, `SameSite=strict`, `Secure` in
-  production.
+  session for the user). Tokens are returned in the JSON payload and passed via `Authorization: Bearer <token>`.
 - **Extract-token binding** — `/extract` mints a short-lived JWT binding the
   SHA-256 of the extracted text; `/analyze` rejects any text whose hash doesn't
   match.
@@ -118,11 +116,11 @@ All routes are mounted under `/api`. Errors share a common shape:
 ### Auth (`/api/auth`)
 | Method | Path | Body / Auth | Response |
 |--------|------|-------------|----------|
-| POST | `/register` | `{ name, email, password }` | `201 { userId, name, email }` + cookies |
-| POST | `/login` | `{ email, password }` | `200 { userId, name, email }` + cookies |
-| POST | `/refresh` | `refreshToken` cookie | `200` + rotated cookies |
-| POST | `/logout` | `accessToken` cookie | `200`, cookies cleared |
-| GET | `/me` | `accessToken` cookie | `200 { _id, name, email, role }` |
+| POST | `/register` | `{ name, email, password }` | `201 { success, data: { userId, name, email, accessToken, refreshToken } }` |
+| POST | `/login` | `{ email, password }` | `200 { success, data: { userId, name, email, accessToken, refreshToken } }` |
+| POST | `/refresh` | `{ refreshToken }` | `200 { success, data: { accessToken, refreshToken } }` |
+| POST | `/logout` | `{ refreshToken }` | `200 { success, data: null }` |
+| GET | `/me` | `Authorization: Bearer <token>` | `200 { success, data: { _id, name, email, role } }` |
 
 ### Audit (`/api/audit`)
 | Method | Path | Body / Headers | Response |
@@ -142,7 +140,7 @@ All routes are mounted under `/api`. Errors share a common shape:
 | GET | `/history` | — | `200 { contracts[] }` |
 | GET | `/:id` | — | `200 { contract }` |
 
-> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server to receive live status updates and the final result. The WebSocket connection automatically authenticates using the `HttpOnly` access token cookie. Then, clients send `{ "type": "subscribe", "jobId": "..." }`. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
+> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server to receive live status updates and the final result. The WebSocket connection requires an authentication token passed via `wss://<host>/ws?token=<accessToken>`. Then, clients send `{ "type": "subscribe", "jobId": "..." }`. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
 
 ---
 

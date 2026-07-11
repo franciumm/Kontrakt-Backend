@@ -4,7 +4,7 @@
 // Catches obvious prompt-injection patterns. NOT sufficient alone —
 // that's why Layers 2 (prompt architecture) and 3 (output validation) exist.
 
-const MAX_CONTRACT_LENGTH = 12_000;
+const MAX_CONTRACT_LENGTH = 100_000;
 
 /**
  * Known prompt-injection patterns.

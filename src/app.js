@@ -25,7 +25,7 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(cors(corsOptions));
-  app.use(express.json({ limit: '256kb' }));
+  app.use(express.json({ limit: '32mb' }));
   app.use(cookieParser());
 
   // Rate limit is global — applies to every route. In test mode we skip it

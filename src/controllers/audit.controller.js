@@ -1,5 +1,5 @@
 import { AppError } from '../utils/AppError.js';
-import { convertPdfToImages } from '../services/pdf.service.js';
+
 import { transcribeImages } from '../services/vision.service.js';
 import { deepAuditContract, fastFirstPassScan } from '../services/audit.service.js';
 import { signExtractToken } from '../services/extractToken.js';
@@ -16,8 +16,9 @@ import { logger } from '../utils/logger.js';
  */
 export async function extractPdfText(req, res, next) {
   try {
-    if (!req.file) {
-      return next(new AppError('No PDF file uploaded.', 400));
+    const { images } = req.body;
+    if (!images || !images.length) {
+      return next(new AppError('No images provided.', 400));
     }
 
     const { jobId } = await jobManager.createJob(req.user._id, OPERATIONS.AUDIT_EXTRACT);
@@ -28,15 +29,15 @@ export async function extractPdfText(req, res, next) {
     // Async processing — not awaited by the HTTP handler.
     (async () => {
       try {
-        // 1. Convert PDF pages → base64 JPEGs
-        jobManager.emitStatus(jobId, 'converting-pages');
-        const { images, pageCount } = await convertPdfToImages(req.file.buffer);
-
-        // 2. Transcribe via Vision model
+        const pageCount = images.length;
+        
+        // Transcribe via Vision model
         jobManager.emitStatus(jobId, 'transcribing', { pageCount });
-        const { text, truncated } = await transcribeImages(images);
+        const { text, truncated } = await transcribeImages(images, (current, total) => {
+          jobManager.emitStatus(jobId, 'transcribing_page', { current, total });
+        });
 
-        // 3. Mint a short-lived token binding this exact text (ticket SEC-108).
+        // Mint a short-lived token binding this exact text (ticket SEC-108).
         const extractToken = signExtractToken(text);
 
         jobManager.completeJob(jobId, {
@@ -67,6 +68,10 @@ export async function analyzeContract(req, res, next) {
   try {
     const { contractText, preset } = req.body;
     const userId = req.user._id;
+
+    if (contractText.replace(/\[ILLEGIBLE_PAGE\]/g, '').trim().length === 0) {
+      return next(new AppError('Contract text is illegible or completely blank. Please upload a clearer image or provide readable text.', 400));
+    }
 
     const { jobId } = await jobManager.createJob(userId, OPERATIONS.AUDIT_ANALYZE);
     res.status(202).json({ jobId });
@@ -111,6 +116,10 @@ export async function analyzeContract(req, res, next) {
 export async function fastScanContract(req, res, next) {
   try {
     const { contractText } = req.body;
+
+    if (contractText.replace(/\[ILLEGIBLE_PAGE\]/g, '').trim().length === 0) {
+      return next(new AppError('Contract text is illegible or completely blank. Please upload a clearer image or provide readable text.', 400));
+    }
 
     const { jobId } = await jobManager.createJob(req.user._id, OPERATIONS.AUDIT_FAST_SCAN);
     res.status(202).json({ jobId });

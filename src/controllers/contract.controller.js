@@ -42,7 +42,6 @@ export async function startContractHandler(req, res, next) {
 
 /**
  * POST /api/contract/answer
- * Submit answers to questions and get the next set (or done=true).
  */
 export async function answerContractHandler(req, res, next) {
   try {

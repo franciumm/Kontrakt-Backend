@@ -180,9 +180,11 @@ export async function generateReport(contractId, userId) {
 
   const report = await generateExposureReport(coveredClauses, gapClauses);
 
+  const exposureScores = getExposureScore(contract.answeredState, contract.gigType);
+
   // Save report to DB.
   contract.exposureReport = report;
   await contract.save();
 
-  return { report };
+  return { report, exposureScores };
 }

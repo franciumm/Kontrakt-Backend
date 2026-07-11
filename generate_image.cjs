@@ -1,0 +1,11 @@
+const { createCanvas } = require('canvas');
+const canvas = createCanvas(400, 200);
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = 'white';
+ctx.fillRect(0, 0, 400, 200);
+ctx.fillStyle = 'black';
+ctx.font = '20px Arial';
+ctx.fillText('This is a freelance contract.', 50, 100);
+ctx.fillText('Client will pay $500.', 50, 130);
+const buffer = canvas.toBuffer('image/png');
+console.log('data:image/png;base64,' + buffer.toString('base64'));

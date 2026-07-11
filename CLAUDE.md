@@ -5,12 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev     # nodemon — but see "Bootstrap gap" below
-npm start       # node index.js — but see "Bootstrap gap" below
-npm test        # no-op stub, no test suite exists
+npm run dev     # nodemon
+npm start       # node index.js
+npm test        # runs the test suite using the node native test runner
 ```
-
-**Bootstrap gap:** `index.js` (root) and `src/app.js` are empty. There is no Express `app.listen()` anywhere yet, so neither `npm run dev` nor `npm start` will serve. `DB/DB.Connect.js` also imports `logger` from `src/utils/logger.js`, which is a 0-byte file — wiring the DB will fail at import time. To run the server, these must be implemented first.
 
 ## Environment
 
@@ -27,7 +25,7 @@ npm test        # no-op stub, no test suite exists
 
 ## Two product flows
 
-### Flow 1 — Contract Interrogator (incomplete)
+### Flow 1 — Contract Interrogator
 Graph-based Q&A that walks clause nodes by dependency resolution and computes an exposure-coverage score.
 
 - `src/lib/graphWalker.js` — pure domain logic: `getNextQuestions(state, gigType)`, `getExposureScore(state, gigType)`.

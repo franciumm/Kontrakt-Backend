@@ -82,7 +82,7 @@
 | PDF Extract | Returns result via HTTP | → Return `202 { jobId }`, emit status + result via WS |
 | Auth | Works, not enforced on audit | → Add `requireAuth` to ALL audit + contract routes |
 
-### ❌ Must Be Built
+### ✅ Must Be Built (Completed)
 
 | Feature | What's Needed |
 |---------|--------------|
@@ -93,7 +93,7 @@
 | Vision OCR provider switch | Move from AMD → Fireworks |
 | Deployment config | Dockerfile, Railway config |
 
-### 🔧 Must Be Fixed
+### ✅ Must Be Fixed (Resolved)
 
 | Bug | Location | Fix |
 |-----|----------|-----|

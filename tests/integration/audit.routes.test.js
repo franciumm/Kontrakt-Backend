@@ -55,7 +55,7 @@ test('POST /api/audit/analyze — missing body returns 400 (validation middlewar
 test('POST /api/audit/analyze — oversize body rejected at the door', async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const huge = { contractText: 'x'.repeat(12_001) };
+    const huge = { contractText: 'x'.repeat(250_001) };
     const res = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
@@ -160,7 +160,7 @@ test('POST /api/audit/analyze — missing-body and oversize still return 400 (va
     const huge = await fetch(`${baseUrl}/api/audit/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${generateTestToken()}` },
-      body: JSON.stringify({ contractText: 'x'.repeat(12_001) }),
+      body: JSON.stringify({ contractText: 'x'.repeat(250_001) }),
     });
     assert.equal(huge.status, 400);
   } finally {

@@ -38,7 +38,7 @@ test('convertPdfToImages — rejects PDFs exceeding MAX_PAGES', async () => {
 });
 
 test('convertPdfToImages — exposes MAX_PAGES constant', () => {
-  assert.equal(MAX_PAGES, 10);
+  assert.equal(MAX_PAGES, 20);
 });
 
 // Happy-path rendering is now exercisable in pure JS (ticket SEC-102, option

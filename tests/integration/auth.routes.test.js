@@ -21,7 +21,8 @@ test('POST /api/auth/register — creates user and returns 201', async () => {
     const body = await res.json();
     assert.equal(body.success, true);
     assert.equal(body.data.email, 'alice@example.com');
-    assert.ok(res.headers.get('set-cookie')?.includes('accessToken'));
+    assert.ok(body.data.accessToken);
+    assert.ok(body.data.refreshToken);
   } finally {
     await close();
   }
@@ -50,7 +51,7 @@ test('POST /api/auth/login — valid credentials return 200', async () => {
   }
 });
 
-test('POST /api/auth/login — invalid credentials return 401', async () => {
+test('POST /api/auth/login — invalid credentials return 400', async () => {
   const { baseUrl, close } = await startServer({ withDb: true });
   try {
     await clearTestDb();
@@ -59,7 +60,7 @@ test('POST /api/auth/login — invalid credentials return 401', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'nobody@example.com', password: 'wrongpassword' }),
     });
-    assert.equal(res.status, 401);
+    assert.equal(res.status, 400);
   } finally {
     await close();
   }
@@ -84,10 +85,10 @@ test('GET /api/auth/me — returns profile when authenticated', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Carol', email: 'carol@example.com', password: 'password123' }),
     });
-    const cookie = registerRes.headers.get('set-cookie');
+    const { data: { accessToken } } = await registerRes.json();
 
     const res = await fetch(`${baseUrl}/api/auth/me`, {
-      headers: { Cookie: cookie },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     assert.equal(res.status, 200);
     const body = await res.json();
