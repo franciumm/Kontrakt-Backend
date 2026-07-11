@@ -9,10 +9,9 @@ contracts for red flags. Two core flows:
    and assembles a flowing contract via LLM. *(Fully implemented end-to-end)*
 2. **Contract Audit Engine** — an LLM-powered auditor that scans pasted or
    PDF-extracted contracts for dangerous clauses, defended by a five-layer
-   prompt-injection security architecture.
+   prompt-injection security architecture. *(Fully implemented end-to-end)*
 
-> **Roadmap:** See [`VISION_PLAN.md`](./VISION_PLAN.md) for the full execution
-> plan including WebSocket job system, auth enforcement, and deployment config.
+> **Note:** The core features including the WebSocket job system, auth enforcement across all routes, and deployment configurations are fully live.
 
 ---
 
@@ -28,7 +27,7 @@ contracts for red flags. Two core flows:
 - **Fast-scan**: streaming first-pass trap count for instant feedback.
 - **Five-layer injection defense** — see *Architecture* below.
 
-### Contract Interrogator (Domain Logic Complete)
+### Contract Interrogator (Live)
 - **Graph walker** (`src/lib/graphWalker.js`) — `getNextQuestions(state, gigType)`
   and `getExposureScore(state, gigType)`. Eligibility gates on `triggersWhen`
   AND dependency resolution; the score is the weighted coverage of triggered
@@ -42,6 +41,7 @@ contracts for red flags. Two core flows:
 - **Auth** — JWT access + refresh tokens, bcrypt-hashed passwords, hashed
   refresh-token storage with **reuse detection** (a replayed token revokes every
   session for the user). Tokens are returned in the JSON payload and passed via `Authorization: Bearer <token>`.
+- **Enforced Auth** — Required across all Audit and Contract API endpoints.
 - **Extract-token binding** — `/extract` mints a short-lived JWT binding the
   SHA-256 of the extracted text; `/analyze` rejects any text whose hash doesn't
   match.
@@ -49,8 +49,9 @@ contracts for red flags. Two core flows:
 ### Operational Defenses
 - **Rate limiting** — fixed-window per-IP (30 req/min default).
 - **Concurrency cap** — per-process semaphore on `/extract` so concurrent PDF
-  rendering can't OOM the host.
+  processing doesn't OOM the host.
 - **Cluster mode** — opt-in (`CLUSTER=1`) for multi-core bounding.
+- **WebSocket Job Pattern** — heavy operations are asynchronous.
 
 ---
 
@@ -64,12 +65,11 @@ contracts for red flags. Two core flows:
   (`baseURL: https://api.fireworks.ai/inference/v1`). Models:
   - `glm-5p2` — deep audit
   - `accounts/francium/deployments/qi296nit` (Gemma 4 31B IT) — fast scan + vision OCR
-- **Injection classifier**: Self-hosted on AMD Cloud (`Qwen2.5-7B-Instruct`)
+- **Injection classifier**: Self-hosted on AMD Cloud (`Qwen/Qwen2.5-7B-Instruct`)
   via OpenAI-compatible endpoint.
-- **PDF rendering**: `pdfjs-dist` + `@napi-rs/canvas` — pure-JS, no ghostscript.
-  `pdf-lib` for validation.
+- **PDF processing**: Sent to Vision model as base64 images from frontend.
 - **Auth**: `bcryptjs` + `jsonwebtoken`.
-- **File uploads**: `multer` (in-memory, 2 MB cap, PDF-only with magic-byte check).
+- **WebSocket**: `ws` package for real-time job status streaming.
 
 ---
 
@@ -111,7 +111,7 @@ All routes are mounted under `/api`. Errors share a common shape:
 ### Health
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/api/health` | `{ status: "ok", service: "Kontrakt Backend API" }` |
+| GET | `/api/health` | `{ status: "ok", service: "Kontrakt Backend API" }` (supports `?deep=1`) |
 
 ### Auth (`/api/auth`)
 | Method | Path | Body / Auth | Response |
@@ -122,14 +122,16 @@ All routes are mounted under `/api`. Errors share a common shape:
 | POST | `/logout` | `{ refreshToken }` | `200 { success, data: null }` |
 | GET | `/me` | `Authorization: Bearer <token>` | `200 { success, data: { _id, name, email, role } }` |
 
-### Audit (`/api/audit`)
+### Audit (`/api/audit`) - *Requires Auth*
 | Method | Path | Body / Headers | Response |
 |--------|------|----------------|----------|
-| POST | `/extract` | `multipart/form-data`, field `contractFile` (PDF, ≤2 MB, ≤10 pages) | `200 { text, extractToken, pageCount, truncated }` |
-| POST | `/analyze` | `{ contractText, preset? }` + `X-Extract-Token` header | `200 { flags[], meta }` |
-| POST | `/fast-scan` | `{ contractText }` | streamed NDJSON `{ "trapCount": N }` |
+| POST | `/extract` | `{ images: ["base64..."] }` | `202 { jobId }` → WS: `{ text, extractToken, pageCount, truncated }` |
+| POST | `/analyze` | `{ contractText, preset? }` + `X-Extract-Token` header | `202 { jobId }` → WS: `{ flags[], meta }` |
+| POST | `/fast-scan` | `{ contractText }` | `202 { jobId }` → WS: `{ "trapCount": N }` |
+| GET | `/history` | — | `200 { success, data: audits[], pagination }` |
+| GET | `/:id` | — | `200 { success, data: audit }` |
 
-### Contract (`/api/contract`)
+### Contract (`/api/contract`) - *Requires Auth*
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | POST | `/start` | `{ gigDescription }` | `202 { jobId }` → WS: gigType, first questions, exposure score |
@@ -137,10 +139,15 @@ All routes are mounted under `/api`. Errors share a common shape:
 | POST | `/generate` | `{ contractId }` | `202 { jobId }` → WS: streamed contract |
 | POST | `/report` | `{ contractId }` | `202 { jobId }` → WS: exposure report |
 | GET | `/presets` | — | `200 { presets[] }` |
-| GET | `/history` | — | `200 { contracts[] }` |
-| GET | `/:id` | — | `200 { contract }` |
+| GET | `/history` | — | `200 { success, data: contracts[], pagination }` |
+| GET | `/:id` | — | `200 { success, data: contract }` |
 
-> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server to receive live status updates and the final result. The WebSocket connection requires an authentication token passed via `wss://<host>/ws?token=<accessToken>`. Then, clients send `{ "type": "subscribe", "jobId": "..." }`. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
+### Jobs (`/api/jobs`) - *Requires Auth*
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/:id` | `200 { success, data: jobStatus }` |
+
+> **Note:** Long-running endpoints use the asynchronous WebSocket Job Pattern. HTTP calls return `202 { jobId }`. Clients then subscribe to the WebSocket server to receive live status updates and the final result. The WebSocket connection requires an authentication token passed via `wss://<host>/ws?token=<accessToken>` or via a message `{ "type": "auth", "token": "..." }`. Then, clients send `{ "type": "subscribe", "jobId": "..." }`. If WS is unavailable, clients can poll `GET /api/jobs/:id`.
 
 ---
 
@@ -173,10 +180,8 @@ cp .env.example .env       # fill in real values; never commit .env
 | `JWT_ACCESS_TTL` | no | `15m` | |
 | `JWT_REFRESH_TTL` | no | `7d` | |
 | `JWT_SALT_ROUNDS` | no | `12` | bcrypt cost factor |
-| `GEMMA_MODEL` | for fast-scan | — | Fireworks deployment ID (e.g. `accounts/francium/deployments/qi296nit`) |
-| `VISION_MODEL` | for OCR | — | Model name served on the vision endpoint |
-| `AMD_BASE_URL` | for OCR | — | Vision OCR endpoint (transitioning to Fireworks) |
-| `AMD_CLASSIFIER_BASE_URL` | for Layer 5 | — | Injection classifier endpoint on AMD Cloud |
+| `GEMMA_MODEL` | yes | `accounts/francium/deployments/qi296nit` | Fireworks deployment ID for fast-scan and Vision OCR |
+| `AMD_CLASSIFIER_BASE_URL` | yes | — | Injection classifier endpoint on AMD Cloud |
 | `CLASSIFIER_MODEL` | no | `Qwen/Qwen2.5-7B-Instruct` | Model name on the classifier server |
 | `CLUSTER` | no | off | Set `1` to enable multi-core cluster mode |
 
@@ -207,18 +212,19 @@ npm run test:security          # security + STRIDE remediation PoCs
 ├── src/
 │   ├── app.js               # Express app factory
 │   ├── config/              # Env loading + frozen config object
-│   ├── constants/           # Audit categories, HTTP status codes
-│   ├── controllers/         # HTTP handlers (audit, auth, contract)
+│   ├── constants/           # Audit categories, HTTP status codes, job states
+│   ├── controllers/         # HTTP handlers (audit, auth, contract, job)
 │   ├── data/
 │   │   ├── cache/           # Demo-cache fallbacks (bad-client, contract presets)
 │   │   └── clauses/         # Gig-specific clause graphs (software, design)
 │   ├── lib/                 # Domain logic (graphWalker, sanitize, prompt, validation)
-│   ├── middleware/          # auth, rateLimiter, concurrency, upload, validateRequest
+│   ├── middleware/          # auth, rateLimiter, concurrency, validateRequest
 │   ├── providers/           # Fireworks + AMD OpenAI SDK clients
-│   ├── routes/              # Express routers (audit, auth, contract)
-│   ├── services/            # Business logic (audit, vision, pdf, auth, contract)
+│   ├── routes/              # Express routers (audit, auth, contract, job)
+│   ├── services/            # Business logic (audit, vision, auth, contract, assembly)
 │   ├── utils/               # Logger, AppError, utility re-exports
-│   └── validators/          # Zod request schemas
+│   ├── validators/          # Zod request schemas
+│   └── ws/                  # WebSocket server, job manager, ws auth
 ├── DB/
 │   ├── DB.Connect.js        # Mongoose connection
 │   └── models/              # User, Contract, Audit schemas
